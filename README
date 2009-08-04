@@ -1,0 +1,12 @@
+RAYGUN
+
+raygun is a raytracer for telescope optics written in fortran. It uses
+(xml maybe?) configuration format. Output is in postscript plots and
+an xml dataset for rt3d. It is designed to be compiled using gfortran. 
+
+Dependencies:
+plplot
+xml-fortran
+
+Usage:
+./raygun <config>
