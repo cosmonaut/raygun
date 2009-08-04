@@ -1,4 +1,5 @@
 FC = /usr/bin/gfortran
+PROGRAM = raygun
 OBJECTS = raygun.o
 #add -v here to see shenanigans!
 VERBOSE = 
@@ -9,7 +10,7 @@ PKG_CONFIG_ENV =
 #RPATHCMD = -Wl,-rpath -Wl,/usr/lib:/usr/lib
 RPATHCMD = 
 
-raygun: raygun.f90
+$(PROGRAM): raygun.f90
 	$(FC) $(VERBOSE) raygun.f90 -o $@ $(RPATHCMD) `$(PKG_CONFIG_ENV) pkg-config --cflags --libs plplot$(LIB_TAG)-f95`
 
 # raygun: raygun.o
@@ -27,4 +28,7 @@ clean:
 	fi
 	@if [ -e *\~ ]; then \
 		rm *\~ ; \
+	fi
+	@if [ -e $(PROGRAM) ]; then \
+		rm $(PROGRAM) ; \
 	fi
