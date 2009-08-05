@@ -8,8 +8,8 @@ LIB_TAG = d
 PKG_CONFIG_ENV = 
 MODDIR = -J xmllib
 
-$(PROGRAM): raygun.f90 xmllib/xmlparse.a
-	$(FC) $(VERBOSE) raygun.f90 -o $@ $(MODDIR) `$(PKG_CONFIG_ENV) pkg-config --cflags --libs plplot$(LIB_TAG)-f95`
+$(PROGRAM): raygun.f90 xmllib/xmlparse.a xmllib/xmlparse.mod
+	$(FC) $(VERBOSE) raygun.f90 -o $@ $(MODDIR) `$(PKG_CONFIG_ENV) pkg-config --cflags --libs plplot$(LIB_TAG)-f95` xmllib/xmlparse.a
 
 # raygun: raygun.o
 # 	$(FC) $(VERBOSE) raygun.o -o raygun
