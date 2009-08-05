@@ -5,13 +5,11 @@ OBJECTS = raygun.o
 VERBOSE = 
 
 LIB_TAG = d
-#PKG_CONFIG_ENV = PKG_CONFIG_PATH=/usr/lib/pkgconfig
 PKG_CONFIG_ENV = 
-#RPATHCMD = -Wl,-rpath -Wl,/usr/lib:/usr/lib
-RPATHCMD = 
+MODDIR = -J xmllib
 
-$(PROGRAM): raygun.f90
-	$(FC) $(VERBOSE) raygun.f90 -o $@ $(RPATHCMD) `$(PKG_CONFIG_ENV) pkg-config --cflags --libs plplot$(LIB_TAG)-f95`
+$(PROGRAM): raygun.f90 xmllib/xmlparse.a
+	$(FC) $(VERBOSE) raygun.f90 -o $@ $(MODDIR) `$(PKG_CONFIG_ENV) pkg-config --cflags --libs plplot$(LIB_TAG)-f95`
 
 # raygun: raygun.o
 # 	$(FC) $(VERBOSE) raygun.o -o raygun

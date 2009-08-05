@@ -1,6 +1,7 @@
 program raygun
 
 use plplot
+use XMLPARSE
 
 implicit none
 
