@@ -1,3 +1,5 @@
-<begin>
-<hi>hai worlds</hi>
-</begin>
+<raytrace>
+<lowerbound>0 0 0</lowerbound>
+<upperbound>10 10 10</upperbound>
+
+</raytrace>

@@ -6,15 +6,14 @@ module xml_data_config
   logical, private :: strict_
   
   character(len=40), dimension(4)      :: optics
-  logical                              :: has_optics
   integer, dimension(2,3)              :: bounds
-  logical                              :: has_bounds
-  
+  integer, dimension(:), pointer       :: lobound
+  integer, dimension(:), pointer       :: hibound
+  double precision, dimension(1:1000,3):: raypos
   integer                              :: numrays
   logical                              :: has_numrays
+  character                            :: hi*30
 
-  character        :: hi*30
-  logical          :: has_hi
 
 contains
 
@@ -32,7 +31,15 @@ subroutine read_xml_file_config(fname, lurep, errout)
   character(len=200), dimension(1:100)   :: data
   integer                                :: nodata
 
+  logical                              :: has_optics
+  logical                              :: has_lobound
+  logical                              :: has_hibound
+  logical                              :: has_raypos
+  logical                              :: has_numrays
+  logical                              :: has_hi
   has_hi = .false.
+  has_lobound = .false.
+  has_hibound = .false.
   
 
   call xml_open( info, fname, .true. )
@@ -45,11 +52,8 @@ subroutine read_xml_file_config(fname, lurep, errout)
   strict_ = .false.
   error = .false.
   
-  print *,"ERROR?"
-  print *,xml_error(info)
-  
-  bounds(1,1) = 3
-  print *,bounds(1,1)
+  !bounds(1,1) = 3
+  !print *,bounds(1,1)
 
   do
      call xml_get( info, tag, endtag, attribs, noattribs, data, nodata )
@@ -57,6 +61,7 @@ subroutine read_xml_file_config(fname, lurep, errout)
         write(*,*) 'Error reading input file!'
         stop
      endif
+
      if ( endtag .and. noattribs .eq. 0 ) then
         if ( xml_ok(info) ) then
            cycle
@@ -64,6 +69,7 @@ subroutine read_xml_file_config(fname, lurep, errout)
            exit
         endif
      endif
+        
      select case( tag )
      case('hi')
         print *,tag
@@ -71,8 +77,23 @@ subroutine read_xml_file_config(fname, lurep, errout)
              info, tag, endtag, attribs, noattribs, data, nodata, &
              hi, has_hi )
         print *, hi
+     case('raytrace')
+        print *,"ATTRIBS"
         
+     case('lowerbound')
+        call read_xml_integer_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             lobound, has_lobound )
+        print *, lobound(1), lobound(2), lobound(3)
+
+     case('upperbound')
+        call read_xml_integer_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             hibound, has_hibound )
+        print *, hibound(1), hibound(2), hibound(3)
+
      case default
+        print *, "DEF!"
         if ( strict_ ) then
            error = .true.
            if ( lurep_ .gt. 0 ) then
