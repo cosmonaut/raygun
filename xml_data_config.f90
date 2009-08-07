@@ -48,8 +48,8 @@ subroutine read_xml_file_config(fname, lurep, errout)
   print *,"ERROR?"
   print *,xml_error(info)
   
-  bounds(0,2) = 3
-  print *,bounds(0,2)
+  bounds(1,1) = 3
+  print *,bounds(1,1)
 
   do
      call xml_get( info, tag, endtag, attribs, noattribs, data, nodata )
