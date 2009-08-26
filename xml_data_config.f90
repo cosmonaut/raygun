@@ -5,14 +5,15 @@ module xml_data_config
   integer, private :: lurep_
   logical, private :: strict_
   
-  character(len=40), dimension(4)      :: optics
-  integer, dimension(2,3)              :: bounds
-  integer, dimension(:), pointer       :: lobound
-  integer, dimension(:), pointer       :: hibound
-  double precision, dimension(1:1000,3):: raypos
-  integer                              :: numrays
-  logical                              :: has_numrays
-  character                            :: hi*30
+  character(len=40), dimension(4)             :: optics
+  integer, dimension(2,3)                     :: bounds
+  integer, dimension(:), pointer              :: lobound
+  integer, dimension(:), pointer              :: hibound
+  double precision, dimension(1:1000,3)       :: raypos
+  integer                                     :: numrays
+  double precision, dimension(:), pointer     :: rayplane, beamcenter
+  double precision                            :: beamradius
+  character(len=40)                           :: name
 
 
 contains
@@ -31,16 +32,20 @@ subroutine read_xml_file_config(fname, lurep, errout)
   character(len=200), dimension(1:100)   :: data
   integer                                :: nodata
 
-  logical                              :: has_optics
-  logical                              :: has_lobound
-  logical                              :: has_hibound
-  logical                              :: has_raypos
-  logical                              :: has_numrays
-  logical                              :: has_hi
-  has_hi = .false.
+  logical :: has_optics
+  logical :: has_lobound
+  logical :: has_hibound
+  logical :: has_raypos
+  logical :: has_numrays, has_beamradius, has_rayplane, has_beamcenter
+  logical :: has_name
+
   has_lobound = .false.
   has_hibound = .false.
-  
+  has_numrays = .false.
+  has_beamradius = .false.
+  has_beamcenter = .false.
+  has_rayplane = .false.
+  has_name = .false.
 
   call xml_open( info, fname, .true. )
   call xml_options( info, report_errors=.true. )
@@ -71,15 +76,20 @@ subroutine read_xml_file_config(fname, lurep, errout)
      endif
         
      select case( tag )
-     case('hi')
-        print *,tag
-        call read_xml_line( &
-             info, tag, endtag, attribs, noattribs, data, nodata, &
-             hi, has_hi )
-        print *, hi
+!      case('hi')
+!         print *,tag
+!         call read_xml_line( &
+!              info, tag, endtag, attribs, noattribs, data, nodata, &
+!              hi, has_hi )
+!         print *, hi
      case('raytrace')
-        print *,"ATTRIBS"
-        
+        print *,"READING RAYTRACE XML"
+
+     case('name')
+        call read_xml_word( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             name, has_name )
+
      case('lowerbound')
         call read_xml_integer_array( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
@@ -91,6 +101,27 @@ subroutine read_xml_file_config(fname, lurep, errout)
              info, tag, endtag, attribs, noattribs, data, nodata, &
              hibound, has_hibound )
         print *, hibound(1), hibound(2), hibound(3)
+
+     case ('numrays')
+        call read_xml_integer( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             numrays, has_numrays )
+
+     case ('rayplane')
+        call read_xml_double_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             rayplane, has_rayplane )
+        print *, size(rayplane)
+
+     case ('beamradius')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             beamradius, has_beamradius )
+        
+     case ('beamcenter')
+        call read_xml_double_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             beamcenter, has_beamcenter )
 
      case default
         print *, "DEF!"

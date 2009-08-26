@@ -1,5 +1,10 @@
 <raytrace>
+<name>test</name>
 <lowerbound>0 0 0</lowerbound>
 <upperbound>10 10 10</upperbound>
+<numrays>3000</numrays>
+<rayplane>0 0 1 -1</rayplane>
+<beamradius>3</beamradius>
+<beamcenter>3 3 1</beamcenter>
 
 </raytrace>
