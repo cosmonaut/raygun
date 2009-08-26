@@ -4,12 +4,12 @@ program raygun
 
   implicit none
 
+  double precision, parameter               :: pi = 3.1415926
   integer                                   :: argc
   character(len=100)                        :: file
   double precision                          :: test
   !double precision, dimension(1:30, 1:3000, 1:3)  :: rays = 0
   double precision, dimension(:, :, :), allocatable :: rays
-
     
   print *,"O HAI WORLDS!"
 
@@ -50,6 +50,8 @@ contains
     rays(1, 1, :) = (/beamcenter(:)/)
     print *, rays(1, 1, :)
 
+    !print *, check_bounds(rays(1,1,:), lobound, hibound)
+
     !print *, rayplane(1)*beamcenter(1) + rayplane(2)*beamcenter(2) &
     !     + rayplane(3)*beamcenter(3) + rayplane(4)
     !Check mah planzez
@@ -61,13 +63,13 @@ contains
        stop
     end if
     
-    if (beamcenter(1) /= 0) then
-       direction = 1
-    else if (beamcenter(2) /= 0) then
-       direction = 2
-    else
-       direction = 3
-    end if
+!     if (beamcenter(1) /= 0) then
+!        direction = 1
+!     else if (beamcenter(2) /= 0) then
+!        direction = 2
+!     else
+!        direction = 3
+!     end if
 
     do i=1, numrays
        
@@ -78,6 +80,21 @@ contains
 
 end program raygun
 
+logical function check_bounds(point, lobound, hibound) result(answer)
+  integer, dimension(3), intent(IN)          :: lobound, hibound
+  double precision, dimension(3), intent(IN) :: point
+  integer                                    :: i
+
+  do i=1, 3
+     if (point(i) <= hibound(i) .and. point(i) >= lobound(i)) then
+        answer = .true.
+     else
+        answer = .false.
+        print *, "ERROR, point out of bounds"
+        stop
+     end if
+  end do
+end function check_bounds
 
 !valgrind hates you.
 subroutine plot_that_action(name, lobound, hibound)
