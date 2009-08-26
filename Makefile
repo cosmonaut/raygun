@@ -3,7 +3,7 @@ PROGRAM = raygun
 OBJECTS = raygun.o 
 #add -v here to see shenanigans!
 VERBOSE = 
-ARGS = -fdefault-real-8 -fdefault-double-8
+ARGS = -Wall -fdefault-real-8 -fdefault-double-8
 
 LIB_TAG = d
 PKG_CONFIG_ENV = 
@@ -42,4 +42,7 @@ clean:
 	fi
 	@if [ -e *.o ]; then \
 		rm *.o ; \
+	fi
+	@if [ -e xmllib/xml_data_config.mod ]; then \
+		rm xmllib/xml_data_config.mod; \
 	fi
