@@ -4,7 +4,7 @@ program raygun
 
   implicit none
 
-  double precision, parameter               :: pi = 3.1415926
+  double precision, parameter               :: pi = 3.1415926535897932
   integer                                   :: argc
   character(len=100)                        :: file
   double precision                          :: test
@@ -15,6 +15,7 @@ program raygun
 
   test = 1.34567834563987498374
   print *, test
+  print *, pi
 
   argc = IARGC()
 
@@ -43,10 +44,14 @@ program raygun
 contains
 
   subroutine fill_ray_positions()
-    integer :: i, direction
+    integer :: i, direction = 0
     logical :: check_bounds
     double precision, dimension(3,3) :: rotx, roty
+    double precision :: area, gridsize, xcount = 0, ycount = 0
+    logical :: ystep = .false.
+    integer :: count = 0
 
+    print *, direction
     !rotation
     rotx(1,:) = (/1.0, 0.0, 0.0/)
     rotx(2,:) = (/0.0, cos(beamrot(1)), sin(beamrot(1))/)
@@ -56,14 +61,37 @@ contains
     roty(2,:) = (/0.0, 1.0, 0.0/)
     roty(3,:) = (/sin(beamrot(2)), 0.0, cos(beamrot(2))/)
 
-    
-
     allocate(rays(100, numrays, 3))
-    
+
     if (.not. check_bounds(beamcenter, lobound, hibound)) then
        print *, "ERROR: beamcenter out of bounds"
        stop
     end if
+
+    if (beamstyle .eq. 0) then
+       area = pi * beamradius**2
+       gridsize = sqrt(area/numrays)
+       print *, gridsize
+       ycount = ycount + gridsize
+       do i = 1, numrays
+          if (ystep) then
+             ycount = ycount + gridsize
+          end if
+          if (xcount + gridsize <= sqrt(beamradius**2 - ycount**2)) then
+             xcount = xcount + gridsize
+             rays(1, i, :) = 
+             print *, "Hell, yes"
+             count = count + 1
+          else
+             ycount = ycount + gridsize
+             xcount = 0
+          end if
+       end do
+    end if
+
+    print *, count
+
+    
 
     
 
