@@ -44,24 +44,46 @@ contains
 
   subroutine fill_ray_positions()
     integer :: i, direction
+    logical :: check_bounds
+    double precision, dimension(3,3) :: rotx, roty
+
+    !rotation
+    rotx(1,:) = (/1.0, 0.0, 0.0/)
+    rotx(2,:) = (/0.0, cos(beamrot(1)), sin(beamrot(1))/)
+    rotx(3,:) = (/0.0, -sin(beamrot(1)), cos(beamrot(1))/)
+
+    roty(1,:) = (/cos(beamrot(2)), 0.0, -sin(beamrot(2))/)
+    roty(2,:) = (/0.0, 1.0, 0.0/)
+    roty(3,:) = (/sin(beamrot(2)), 0.0, cos(beamrot(2))/)
+
+    
 
     allocate(rays(100, numrays, 3))
     
-    rays(1, 1, :) = (/beamcenter(:)/)
-    print *, rays(1, 1, :)
+    if (.not. check_bounds(beamcenter, lobound, hibound)) then
+       print *, "ERROR: beamcenter out of bounds"
+       stop
+    end if
+
+    
+
+    !rays(1, 1, :) = (/beamcenter(:)/)
+    !print *, rays(1, 1, :)
+
+    
 
     !print *, check_bounds(rays(1,1,:), lobound, hibound)
 
     !print *, rayplane(1)*beamcenter(1) + rayplane(2)*beamcenter(2) &
     !     + rayplane(3)*beamcenter(3) + rayplane(4)
     !Check mah planzez
-    if (rayplane(1)*beamcenter(1) + rayplane(2)*beamcenter(2) &
-         + rayplane(3)*beamcenter(3) + rayplane(4) == 0) then
-       print *, "HELL, YES. WE GOTS A VALID PLANE"
-    else
-       print *, "ERROR: CENTOR OF BEEMZ NOTS IN RAYPLANE!!!!"
-       stop
-    end if
+!     if (rayplane(1)*beamcenter(1) + rayplane(2)*beamcenter(2) &
+!          + rayplane(3)*beamcenter(3) + rayplane(4) == 0) then
+!        print *, "HELL, YES. WE GOTS A VALID PLANE"
+!     else
+!        print *, "ERROR: CENTOR OF BEEMZ NOTS IN RAYPLANE!!!!"
+!        stop
+!     end if
     
 !     if (beamcenter(1) /= 0) then
 !        direction = 1
@@ -87,6 +109,7 @@ logical function check_bounds(point, lobound, hibound) result(answer)
 
   do i=1, 3
      if (point(i) <= hibound(i) .and. point(i) >= lobound(i)) then
+
         answer = .true.
      else
         answer = .false.

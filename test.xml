@@ -3,8 +3,10 @@
 <lowerbound>0 0 0</lowerbound>
 <upperbound>10 10 10</upperbound>
 <numrays>3000</numrays>
-<rayplane>0 0 1 -1</rayplane>
+<beamrot>0 0</beamrot>
 <beamradius>3</beamradius>
-<beamcenter>3 3 1</beamcenter>
+<beamcenter>0 0 0</beamcenter>
+<!-- beamstyle: 0 = grid 1 = radial 2 = random -->
+<beamstyle>0</beamstyle>
 
 </raytrace>

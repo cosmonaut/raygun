@@ -9,9 +9,8 @@ module xml_data_config
   integer, dimension(2,3)                     :: bounds
   integer, dimension(:), pointer              :: lobound
   integer, dimension(:), pointer              :: hibound
-  double precision, dimension(1:1000,3)       :: raypos
-  integer                                     :: numrays
-  double precision, dimension(:), pointer     :: rayplane, beamcenter
+  integer                                     :: numrays, beamstyle
+  double precision, dimension(:), pointer     :: beamcenter, beamrot
   double precision                            :: beamradius
   character(len=40)                           :: name
 
@@ -35,16 +34,16 @@ subroutine read_xml_file_config(fname, lurep, errout)
   logical :: has_optics
   logical :: has_lobound
   logical :: has_hibound
-  logical :: has_raypos
-  logical :: has_numrays, has_beamradius, has_rayplane, has_beamcenter
+  logical :: has_numrays, has_beamradius, has_beamrot, has_beamcenter, has_beamstyle
   logical :: has_name
 
   has_lobound = .false.
   has_hibound = .false.
   has_numrays = .false.
+  has_beamstyle = .false.
   has_beamradius = .false.
   has_beamcenter = .false.
-  has_rayplane = .false.
+  has_beamrot = .false.
   has_name = .false.
 
   call xml_open( info, fname, .true. )
@@ -107,11 +106,16 @@ subroutine read_xml_file_config(fname, lurep, errout)
              info, tag, endtag, attribs, noattribs, data, nodata, &
              numrays, has_numrays )
 
-     case ('rayplane')
+     case ('beamstyle')
+        call read_xml_integer( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             beamstyle, has_beamstyle )
+
+     case ('beamrot')
         call read_xml_double_array( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
-             rayplane, has_rayplane )
-        print *, size(rayplane)
+             beamrot, has_beamrot )
+        print *, size(beamrot)
 
      case ('beamradius')
         call read_xml_double( &
