@@ -35,7 +35,7 @@ program raygun
   call fill_ray_positions()
 
   call plot_that_action(name, lobound, hibound, rays, numrays)
-
+    
   stop
 
 contains
@@ -90,7 +90,7 @@ contains
        end do
 
        rayct = rayct - 1 !we added one more after final assignment
-       !print *, count
+
        rays(1, rayct + 1:rayct*2, 1) = -rays(1, 1:rayct, 1)
        rays(1, rayct + 1:rayct*2, 2) = rays(1, 1:rayct, 2)
        
@@ -99,7 +99,7 @@ contains
        rayct = 2*rayct + 1
        do
           if (ycount + gridsize <= sqrt(beamradius**2 - xcount**2)) then
-             !print *,count
+
              ycount = ycount + gridsize
 
              rays(1, rayct, :) = (/xcount, ycount, 0.0/)
@@ -111,12 +111,13 @@ contains
              exit
           end if
        end do
+
+       rayct = rayct - 1
+       print *, "ACTUAL RAYS: ", rayct !actual rays.
+
     end if
 
-    rayct = rayct - 1
-    print *, "ACTUAL RAYS: ", rayct !actual rays.
-
-    print *, count(count(rays(1, :, :) .eq. 0, 2) .eq. 3)
+    print *, "ZEROS: ", count(count(rays(1, :, :) .eq. 0, 2) .eq. 3) !lol?
     
 !     do i = 1, 3000
 !        print *, rays(1,i,2), i
@@ -182,9 +183,8 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
   !I need black damnit.
   call plscol0(15, 0, 0, 0)
 
-  !name file, set plot device, and rotate the plot.  pdfcairo seems to
-  !give the best bounding box. LaTeX loves it. I would take pdfcairo
-  !to prom.
+  !name file, set plot device.  pdfcairo seems to give the best
+  !bounding box. LaTeX loves it. I would take pdfcairo to prom.
   call plsfnam(trim(name) // ".pdf")
   call plsdev("pdfcairo")
 
