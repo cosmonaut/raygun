@@ -45,8 +45,6 @@ contains
     double precision, dimension(3,3) :: rotx, roty
     double precision :: area, gridsize, xcount = 0, ycount = 0
     logical :: done = .false.
-    logical, dimension(300,3) :: wat
-    double precision, dimension(300,3) :: hah
     integer :: rayct = 1
 
     !rotation
@@ -118,7 +116,6 @@ contains
     rayct = rayct - 1
     print *, "ACTUAL RAYS: ", rayct !actual rays.
 
-    wat = rays(1,:,:) .eq. 0
     print *, count(count(rays(1, :, :) .eq. 0, 2) .eq. 3)
     
 !     do i = 1, 3000
