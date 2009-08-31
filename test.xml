@@ -1,8 +1,8 @@
 <raytrace>
 <name>test</name>
-<lowerbound>0 0 0</lowerbound>
+<lowerbound>-10 -10 -10</lowerbound>
 <upperbound>10 10 10</upperbound>
-<numrays>3000</numrays>
+<numrays>300</numrays>
 <beamrot>0 0</beamrot>
 <beamradius>3</beamradius>
 <beamcenter>0 0 0</beamcenter>

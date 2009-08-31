@@ -75,12 +75,7 @@ subroutine read_xml_file_config(fname, lurep, errout)
      endif
         
      select case( tag )
-!      case('hi')
-!         print *,tag
-!         call read_xml_line( &
-!              info, tag, endtag, attribs, noattribs, data, nodata, &
-!              hi, has_hi )
-!         print *, hi
+
      case('raytrace')
         print *,"READING RAYTRACE XML"
 
@@ -93,13 +88,11 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_integer_array( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              lobound, has_lobound )
-        print *, lobound(1), lobound(2), lobound(3)
 
      case('upperbound')
         call read_xml_integer_array( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              hibound, has_hibound )
-        print *, hibound(1), hibound(2), hibound(3)
 
      case ('numrays')
         call read_xml_integer( &
@@ -115,7 +108,6 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_double_array( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              beamrot, has_beamrot )
-        print *, size(beamrot)
 
      case ('beamradius')
         call read_xml_double( &
