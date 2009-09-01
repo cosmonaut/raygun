@@ -4,13 +4,24 @@ program raygun
 
   implicit none
 
-  double precision, parameter               :: pi = 3.1415926535897932
+  interface
+     subroutine init_optix()
+       
+     end subroutine init_optix
+
+     subroutine fire_lazors()
+
+     end subroutine fire_lazors
+  end interface
+
+  double precision, parameter     :: pi = 3.1415926535897932
 
   integer                                           :: argc
   character(len=100)                                :: file
   double precision, dimension(:, :, :), allocatable :: rays
   double precision, dimension(:, :), allocatable    :: dir
-    
+
+
   print *,"O HAI WORLDS!"
 
   print *, "PI: ", pi
@@ -51,7 +62,8 @@ contains
     logical :: done = .false.
     integer :: rayct = 1, i
 
-    !rotation
+
+    !rotation 
     rotx(1,:) = (/1.0, 0.0, 0.0/)
     rotx(2,:) = (/0.0, cos(beamrot(1)*pi/180), sin(beamrot(1)*pi/180)/)
     rotx(3,:) = (/0.0, -sin(beamrot(1)*pi/180), cos(beamrot(1)*pi/180)/)
@@ -75,7 +87,7 @@ contains
 
     if (beamstyle .eq. 0) then
        area = pi * beamradius**2
-       gridsize = sqrt(area/numrays)
+       gridsize = sqrt(area/numrays) !gandalf!
        print *, "GRID SIZE" , gridsize
 
        do
@@ -155,17 +167,29 @@ logical function check_bounds(point, lobound, hibound) result(answer)
   end do
 end function check_bounds
 
+subroutine fire_lazors(rays, dir, lobound, hibound, numrays)
+  integer, intent(IN)                                         :: numrays
+  integer, dimension(3), intent (IN)                          :: lobound, hibound
+  double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
+  double precision, dimension(numrays, 3), intent(INOUT)      :: dir
+  double precision                                            :: t
+  
+  
+
+  
+end subroutine fire_lazors
+
 !valgrind hates you.
 subroutine plot_that_action(name, lobound, hibound, rays, numrays)
   use plplot, PI => PL_PI
 
-  integer                       :: numrays
-  integer, dimension(3), intent (IN)       :: lobound, hibound
-  character(len=40), intent(IN)            :: name
-  real(plflt), dimension(100, numrays, 3)     :: rays
-  real(plflt), dimension(1:2)              :: x, y
-  real(plflt)                              :: xmin, xmax, ymin, ymax, zmin, zmax
-  integer                                  :: just, axis
+  integer, intent(IN)                                  :: numrays
+  integer, dimension(3), intent (IN)                   :: lobound, hibound
+  character(len=40), intent(IN)                        :: name
+  real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
+  real(plflt), dimension(1:2)                          :: x, y
+  real(plflt)                                          :: xmin, xmax, ymin, ymax, zmin, zmax
+  integer                                              :: just, axis
 
   xmin = lobound(1)
   ymin = lobound(2)
@@ -185,7 +209,9 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
   print *, "PLOTTING..."
   !We will always use Z as the optical axis.
 
-  !I need black damnit.
+  !note to self #[0x212b] is the plplot escape seq for angstrom.
+
+  !I need black, damnit.
   call plscol0(15, 0, 0, 0)
 
   !name file, set plot device.  pdfcairo seems to give the best
@@ -222,6 +248,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
   call pllab("X Axis", "Y Axis", "View from detector. #[0x212b]")
   call plpoin(rays(1,:,1), rays(1,:,2), 95)
 
+  !Good news, everyone!
   call plend()
 
 end subroutine plot_that_action

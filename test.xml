@@ -12,6 +12,8 @@
   <optic1>
     <type></type>
     <position></position>
+    <parameters></parameters>
+    <diameter></diameter>
   </optic1>
 </optics>
 </raytrace>

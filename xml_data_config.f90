@@ -118,6 +118,8 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_double_array( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              beamcenter, has_beamcenter )
+        
+        
 
      case default
         print *, "DEF!"
