@@ -8,5 +8,10 @@
 <beamcenter>0 0 0</beamcenter>
 <!-- beamstyle: 0 = grid 1 = radial 2 = random -->
 <beamstyle>0</beamstyle>
-
+<optics>
+  <optic1>
+    <type></type>
+    <position></position>
+  </optic1>
+</optics>
 </raytrace>

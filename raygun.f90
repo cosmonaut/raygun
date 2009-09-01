@@ -9,6 +9,7 @@ program raygun
   integer                                           :: argc
   character(len=100)                                :: file
   double precision, dimension(:, :, :), allocatable :: rays
+  double precision, dimension(:, :), allocatable    :: dir
     
   print *,"O HAI WORLDS!"
 
@@ -32,7 +33,10 @@ program raygun
   endif
 
   !CHARGIN MAH LAZOR
-  call fill_ray_positions()
+  call init_rays()
+
+  !call init_optix()
+  !call fire_lazors()
 
   call plot_that_action(name, lobound, hibound, rays, numrays)
     
@@ -40,24 +44,29 @@ program raygun
 
 contains
 
-  subroutine fill_ray_positions()
+  subroutine init_rays()
     logical :: check_bounds
     double precision, dimension(3,3) :: rotx, roty
     double precision :: area, gridsize, xcount = 0, ycount = 0
     logical :: done = .false.
-    integer :: rayct = 1
+    integer :: rayct = 1, i
 
     !rotation
     rotx(1,:) = (/1.0, 0.0, 0.0/)
-    rotx(2,:) = (/0.0, cos(beamrot(1)), sin(beamrot(1))/)
-    rotx(3,:) = (/0.0, -sin(beamrot(1)), cos(beamrot(1))/)
+    rotx(2,:) = (/0.0, cos(beamrot(1)*pi/180), sin(beamrot(1)*pi/180)/)
+    rotx(3,:) = (/0.0, -sin(beamrot(1)*pi/180), cos(beamrot(1)*pi/180)/)
 
-    roty(1,:) = (/cos(beamrot(2)), 0.0, -sin(beamrot(2))/)
+    roty(1,:) = (/cos(beamrot(2)*pi/180), 0.0, -sin(beamrot(2)*pi/180)/)
     roty(2,:) = (/0.0, 1.0, 0.0/)
-    roty(3,:) = (/sin(beamrot(2)), 0.0, cos(beamrot(2))/)
+    roty(3,:) = (/sin(beamrot(2)*pi/180), 0.0, cos(beamrot(2)*pi/180)/)
 
     allocate(rays(100, numrays, 3))
     rays = 0
+
+    allocate(dir(numrays, 3))
+    dir(:, 1) = 0.0
+    dir(:, 2) = 0.0
+    dir(:, 3) = 1.0
 
     if (.not. check_bounds(beamcenter, lobound, hibound)) then
        print *, "ERROR: beamcenter out of bounds"
@@ -93,7 +102,7 @@ contains
 
        rays(1, rayct + 1:rayct*2, 1) = -rays(1, 1:rayct, 1)
        rays(1, rayct + 1:rayct*2, 2) = rays(1, 1:rayct, 2)
-       
+
        ycount = 0
        xcount = 0
        rayct = 2*rayct + 1
@@ -119,17 +128,13 @@ contains
 
     print *, "ZEROS: ", count(count(rays(1, :, :) .eq. 0, 2) .eq. 3) !lol?
     
-!     do i = 1, 3000
-!        print *, rays(1,i,2), i
-!        if (rays(1,i,2) .eq. 0.0) then
-!           fake = fake + 1
-!        end if
-!     end do
-!     print *, "FAKE ", fake
+    do i = 1, numrays
+       rays(1, i, :) = matmul(rotx, rays(1, i, :))
+       rays(1, i, :) = matmul(roty, rays(1, i, :))
+       rays(1, i, :) = beamcenter + rays(1, i, :)
+    end do
 
-  end subroutine fill_ray_positions
-
-
+  end subroutine init_rays
 
 end program raygun
 
