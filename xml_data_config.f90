@@ -10,10 +10,11 @@ module xml_data_config
   integer, dimension(:), pointer              :: lobound
   integer, dimension(:), pointer              :: hibound
   integer                                     :: numrays, beamstyle
-  double precision, dimension(:), pointer     :: beamcenter, beamrot
-  double precision                            :: beamradius
+  double precision, dimension(:), pointer     :: beamcenter, beamrot, par_pos, hyper_pos
+  double precision                            :: beamradius, par_a, hyper_a, hyper_c
+  double precision                            :: hyper_rad
   character(len=40)                           :: name
-
+  
 
 contains
 
@@ -35,7 +36,9 @@ subroutine read_xml_file_config(fname, lurep, errout)
   logical :: has_lobound
   logical :: has_hibound
   logical :: has_numrays, has_beamradius, has_beamrot, has_beamcenter, has_beamstyle
-  logical :: has_name
+  logical :: has_name, has_par_a, has_hyper_a, has_hyper_c, has_par_pos
+  logical :: has_hyper_pos, has_hyper_rad
+
 
   has_lobound = .false.
   has_hibound = .false.
@@ -45,6 +48,12 @@ subroutine read_xml_file_config(fname, lurep, errout)
   has_beamcenter = .false.
   has_beamrot = .false.
   has_name = .false.
+  has_par_pos = .false.
+  has_par_a = .false.
+  has_hyper_pos = .false.
+  has_hyper_rad = .false.
+  has_hyper_a = .false.
+  has_hyper_c = .false.
 
   call xml_open( info, fname, .true. )
   call xml_options( info, report_errors=.true. )
@@ -118,7 +127,36 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_double_array( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              beamcenter, has_beamcenter )
-        
+
+     case ('par_pos')
+        call read_xml_double_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             par_pos, has_par_pos )
+
+     case ('par_a')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             par_a, has_par_a )
+
+     case ('hyper_pos')
+        call read_xml_double_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             hyper_pos, has_hyper_pos )
+
+     case ('hyper_rad')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             hyper_rad, has_hyper_rad )
+
+     case ('hyper_a')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             hyper_a, has_hyper_a )
+
+     case ('hyper_c')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             hyper_c, has_hyper_c )
         
 
      case default

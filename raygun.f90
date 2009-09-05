@@ -4,22 +4,22 @@ program raygun
 
   implicit none
 
-  interface
-     subroutine init_optix()
+!   interface
+!      subroutine init_optix()
        
-     end subroutine init_optix
+!      end subroutine init_optix
 
-     subroutine fire_lazors()
+!      subroutine fire_lazors()
 
-     end subroutine fire_lazors
-  end interface
+!      end subroutine fire_lazors
+!   end interface
 
   double precision, parameter     :: pi = 3.1415926535897932
 
-  integer                                           :: argc
+  integer                                           :: argc, bounces
   character(len=100)                                :: file
   double precision, dimension(:, :, :), allocatable :: rays
-  double precision, dimension(:, :), allocatable    :: dir
+  double precision, dimension(:, :), allocatable    :: dir, wavel
 
 
   print *,"O HAI WORLDS!"
@@ -43,11 +43,14 @@ program raygun
      call read_xml_file_config("test.xml")
   endif
 
+  print *, "a: ", hyper_a
+  print *, "hyper radius: ", hyper_rad
+
   !CHARGIN MAH LAZOR
   call init_rays()
 
   !call init_optix()
-  !call fire_lazors()
+  call fire_lazors(rays, dir, lobound, hibound, numrays, par_pos, par_a)
 
   call plot_that_action(name, lobound, hibound, rays, numrays)
     
@@ -78,7 +81,7 @@ contains
     allocate(dir(numrays, 3))
     dir(:, 1) = 0.0
     dir(:, 2) = 0.0
-    dir(:, 3) = 1.0
+    dir(:, 3) = -1.0
 
     if (.not. check_bounds(beamcenter, lobound, hibound)) then
        print *, "ERROR: beamcenter out of bounds"
@@ -167,13 +170,43 @@ logical function check_bounds(point, lobound, hibound) result(answer)
   end do
 end function check_bounds
 
-subroutine fire_lazors(rays, dir, lobound, hibound, numrays)
+subroutine fire_lazors(rays, dir, lobound, hibound, numrays, par_pos, par_a)
   integer, intent(IN)                                         :: numrays
   integer, dimension(3), intent (IN)                          :: lobound, hibound
+  double precision, dimension(3), intent(IN)                  :: par_pos
+  double precision, intent(IN)                                :: par_a
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
-  double precision                                            :: t
+  double precision                                            :: t, a, b, c
+  integer                                                     :: i, bounces
   
+  do i = 1, numrays
+     a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
+     !print *, a
+     b = (2*rays(1, i, 1)*dir(i, 1) + 2*rays(1, i, 2)*dir(i, 2))/(4*par_a) - dir(i, 3)
+     !print *, b
+     c = (rays(1, i, 1)**2 + rays(1, i, 2)**2)/(4*par_a) - rays(1, i, 3)
+     bsquare = b**2 - 4*a*c
+     !print *, (-b + sqrt(b**2 - 4*a*c))/(2*a)
+     !print *, a, b, c
+     if (a == 0.0) then
+        if ((b**2 - 4*a*c) >= 0.0 .and. (.true.)) then
+           !go ahead
+           print *, -c/b
+        else
+           !let it go!
+           print *, "ERROR, not intersect!"
+        end if
+     else if (bsquare == 0) then
+        !right on
+     end if
+
+
+
+     !exit
+     !print *, dir(i, 3)
+
+  end do
   
 
   
@@ -232,6 +265,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
   call pllab("X Axis", "Y Axis", "View from Z axis. #[0x212b]")
 
   call plcol0(1)
+  !call plwid(0)
   call plline(x, y)
 
   call plcol0(15)
@@ -246,7 +280,8 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
   call plenv(-5.0, 5.0 , -5.0, 5.0, just, axis)
   call pllab("X Axis", "Y Axis", "View from detector. #[0x212b]")
-  call plpoin(rays(1,:,1), rays(1,:,2), 95)
+  !call plssym(0.0, 1.0)
+  call plpoin(rays(1,:,1), rays(1,:,2), 95)!95
 
   !Good news, everyone!
   call plend()

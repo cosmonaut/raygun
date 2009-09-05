@@ -4,10 +4,19 @@
 <upperbound>10 10 10</upperbound>
 <numrays>300</numrays>
 <beamrot>0 0</beamrot>
-<beamradius>3</beamradius>
-<beamcenter>0 0 0</beamcenter>
+<beamradius>0.5</beamradius>
+<beamcenter>0.0 0.0 3.0</beamcenter>
 <!-- beamstyle: 0 = grid 1 = radial 2 = random -->
 <beamstyle>0</beamstyle>
+<!-- (x**2 + y**2)/4a -->
+<par_pos>0.0 0.0 0.0</par_pos>
+<par_a>3.0</par_a>
+<par_rad>0.5</par_rad>
+<hyper_pos></hyper_pos>
+<hyper_rad>6.74524025385312836E-002</hyper_rad>
+<hyper_a>1.1457070964337681</hyper_a>
+<hyper_c>1.55</hyper_c>
+
 <optics>
   <optic1>
     <type></type>
