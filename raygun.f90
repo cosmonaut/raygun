@@ -50,7 +50,8 @@ program raygun
   call init_rays()
 
   !call init_optix()
-  call fire_lazors(rays, dir, lobound, hibound, numrays, par_pos, par_a)
+  call fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
+       hyper_pos, hyper_a, hyper_c)
 
   call plot_that_action(name, lobound, hibound, rays, numrays)
     
@@ -154,6 +155,9 @@ contains
 end program raygun
 
 logical function check_bounds(point, lobound, hibound) result(answer)
+
+  implicit none
+
   integer, dimension(3), intent(IN)          :: lobound, hibound
   double precision, dimension(3), intent(IN) :: point
   integer                                    :: i
@@ -170,46 +174,70 @@ logical function check_bounds(point, lobound, hibound) result(answer)
   end do
 end function check_bounds
 
-subroutine fire_lazors(rays, dir, lobound, hibound, numrays, par_pos, par_a)
-  integer, intent(IN)                                         :: numrays
+subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
+     hyper_pos, hyper_a, hyper_c)
+
+  implicit none
+
+  integer, intent(IN)                                         :: numrays, numoptics
   integer, dimension(3), intent (IN)                          :: lobound, hibound
-  double precision, dimension(3), intent(IN)                  :: par_pos
-  double precision, intent(IN)                                :: par_a
+  double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos
+  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
-  double precision                                            :: t, a, b, c
-  integer                                                     :: i, bounces
+  double precision, dimension(3)  :: t_arr = 0.0, prim_norm = 0.0, sec_norm = 0.0
+  double precision                :: prim_a, prim_b, prim_c
+  double precision                :: sec_a, sec_b, sec_c
+  !double precision                :: det_a, det_b, det_c, det_norm
+  double precision                :: t, a, b, c, bsquare
+  integer                         :: i, bnc = 1
+
   
   do i = 1, numrays
-     a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
-     !print *, a
-     b = (2*rays(1, i, 1)*dir(i, 1) + 2*rays(1, i, 2)*dir(i, 2))/(4*par_a) - dir(i, 3)
-     !print *, b
-     c = (rays(1, i, 1)**2 + rays(1, i, 2)**2)/(4*par_a) - rays(1, i, 3)
-     bsquare = b**2 - 4*a*c
-     !print *, (-b + sqrt(b**2 - 4*a*c))/(2*a)
-     !print *, a, b, c
-     if (a == 0.0) then
-        if ((b**2 - 4*a*c) >= 0.0 .and. (.true.)) then
+     !note rederive this to include parabola location
+     prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
+     prim_b = (2*rays(bnc, i, 1)*dir(i, 1) + 2*rays(bnc, i, 2)*dir(i, 2))/(4*par_a) - dir(i, 3)
+     prim_c = (rays(bnc, i, 1)**2 + rays(bnc, i, 2)**2)/(4*par_a) - rays(bnc, i, 3)
+
+     bsquare = prim_b**2 - 4*prim_a*prim_c
+
+     sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
+          / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+     sec_b = ((hyper_c**2 - hyper_a**2)*(2*dir(i, 1)*(rays(bnc, i, 1) - hyper_pos(1)) &
+          + (2 * dir(i, 2) * (rays(bnc, i, 2) - hyper_pos(2)))) + (hyper_a**2 * 2 * dir(i, 3)) &
+          * (rays(bnc, i, 3) - hyper_pos(3))) / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+     sec_c = ((hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
+          + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
+          + hyper_pos(2)**2) + hyper_a**2 * (-rays(bnc, i, 3)**2 + 2*rays(bnc, i, 3)*hyper_pos(3) &
+          - hyper_pos(3)**2 - (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
+          * (hyper_c**2 - hyper_a**2))
+
+     print *, sec_a
+
+     if (prim_a == 0.0) then
+        if ((bsquare) >= 0.0 .and. (.true.)) then
            !go ahead
-           print *, -c/b
+           t = -prim_c/prim_b
+           t_arr = dir(i, :)*t
+           rays(2, i, :) = rays(1, i, :) + t_arr
         else
            !let it go!
            print *, "ERROR, not intersect!"
         end if
      else if (bsquare == 0) then
         !right on
+     else if (bsquare > 0) then
+        print *, "How did we get here?"
+     else if (bsquare < 0) then
+        !fail
+        print *, "no intersection?!"
+
      end if
-
-
 
      !exit
      !print *, dir(i, 3)
-
   end do
-  
 
-  
 end subroutine fire_lazors
 
 !valgrind hates you.
@@ -266,19 +294,28 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
 
   call plcol0(1)
   !call plwid(0)
+  !call plline(rays(:,1,1), rays(:,1,2))
   call plline(x, y)
 
   call plcol0(15)
-  call plenv(zmin, zmax, ymin, ymax, just, axis)
+  !call plenv(zmin, zmax, ymin, ymax, just, axis)
+  call plenv(-1.0, 0.4, -0.6, 0.6, just, axis)
   call pllab("Z Axis", "Y Axis", "View from X axis. #[0x212b]")
+  do i = 1, numrays
+     call plline(rays(1:2,i,3), rays(1:2,i,2))
+  end do
 
   call plcol0(15)
   call plenv(zmin, zmax, xmin, xmax, just, axis)
   call pllab("Z Axis", "X Axis", "View from Y axis. #[0x212b]")
+  do i = 1, numrays
+     call plline(rays(1:2,i,3), rays(1:2,i,1))
+  end do
+
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-5.0, 5.0 , -5.0, 5.0, just, axis)
+  call plenv(-0.6, 0.6, -0.6, 0.6, just, axis)
   call pllab("X Axis", "Y Axis", "View from detector. #[0x212b]")
   !call plssym(0.0, 1.0)
   call plpoin(rays(1,:,1), rays(1,:,2), 95)!95

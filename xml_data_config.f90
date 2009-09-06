@@ -9,7 +9,7 @@ module xml_data_config
   integer, dimension(2,3)                     :: bounds
   integer, dimension(:), pointer              :: lobound
   integer, dimension(:), pointer              :: hibound
-  integer                                     :: numrays, beamstyle
+  integer                                     :: numrays, numoptics, beamstyle
   double precision, dimension(:), pointer     :: beamcenter, beamrot, par_pos, hyper_pos
   double precision                            :: beamradius, par_a, hyper_a, hyper_c
   double precision                            :: hyper_rad
@@ -37,12 +37,13 @@ subroutine read_xml_file_config(fname, lurep, errout)
   logical :: has_hibound
   logical :: has_numrays, has_beamradius, has_beamrot, has_beamcenter, has_beamstyle
   logical :: has_name, has_par_a, has_hyper_a, has_hyper_c, has_par_pos
-  logical :: has_hyper_pos, has_hyper_rad
+  logical :: has_hyper_pos, has_hyper_rad, has_numoptics
 
 
   has_lobound = .false.
   has_hibound = .false.
   has_numrays = .false.
+  has_numoptics = .false.
   has_beamstyle = .false.
   has_beamradius = .false.
   has_beamcenter = .false.
@@ -107,6 +108,11 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_integer( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              numrays, has_numrays )
+
+     case ('numoptics')
+        call read_xml_integer( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             numoptics, has_numoptics )
 
      case ('beamstyle')
         call read_xml_integer( &
