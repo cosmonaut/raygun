@@ -77,9 +77,11 @@ contains
     roty(3,:) = (/sin(beamrot(2)*pi/180), 0.0, cos(beamrot(2)*pi/180)/)
 
     allocate(rays(100, numrays, 3))
-    rays = 0
+    rays = 0.0
 
     allocate(dir(numrays, 3))
+    !update this to calculate dir from beamcenter to primary
+    !vertex. also normalize
     dir(:, 1) = 0.0
     dir(:, 2) = 0.0
     dir(:, 3) = -1.0
@@ -201,6 +203,7 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
 
      bsquare = prim_b**2 - 4*prim_a*prim_c
 
+     !do a check on me.
      sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
           / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
      sec_b = ((hyper_c**2 - hyper_a**2)*(2*dir(i, 1)*(rays(bnc, i, 1) - hyper_pos(1)) &
@@ -209,10 +212,10 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
      sec_c = ((hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
           + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
           + hyper_pos(2)**2) + hyper_a**2 * (-rays(bnc, i, 3)**2 + 2*rays(bnc, i, 3)*hyper_pos(3) &
-          - hyper_pos(3)**2 - (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
+          - hyper_pos(3)**2 + (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
           * (hyper_c**2 - hyper_a**2))
 
-     print *, sec_a
+     print *, (sec_b**2 - 4*sec_a*sec_c)
 
      if (prim_a == 0.0) then
         if ((bsquare) >= 0.0 .and. (.true.)) then
@@ -234,8 +237,6 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
 
      end if
 
-     !exit
-     !print *, dir(i, 3)
   end do
 
 end subroutine fire_lazors
