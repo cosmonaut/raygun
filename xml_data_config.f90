@@ -12,7 +12,7 @@ module xml_data_config
   integer                                     :: numrays, numoptics, beamstyle
   double precision, dimension(:), pointer     :: beamcenter, beamrot, par_pos, hyper_pos
   double precision                            :: beamradius, par_a, hyper_a, hyper_c
-  double precision                            :: hyper_rad
+  double precision                            :: hyper_rad, par_rad
   character(len=40)                           :: name
   
 
@@ -37,7 +37,7 @@ subroutine read_xml_file_config(fname, lurep, errout)
   logical :: has_hibound
   logical :: has_numrays, has_beamradius, has_beamrot, has_beamcenter, has_beamstyle
   logical :: has_name, has_par_a, has_hyper_a, has_hyper_c, has_par_pos
-  logical :: has_hyper_pos, has_hyper_rad, has_numoptics
+  logical :: has_hyper_pos, has_hyper_rad, has_numoptics, has_par_rad
 
 
   has_lobound = .false.
@@ -51,6 +51,7 @@ subroutine read_xml_file_config(fname, lurep, errout)
   has_name = .false.
   has_par_pos = .false.
   has_par_a = .false.
+  has_par_rad = .false.
   has_hyper_pos = .false.
   has_hyper_rad = .false.
   has_hyper_a = .false.
@@ -143,6 +144,11 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_double( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              par_a, has_par_a )
+
+     case ('par_rad')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             par_rad, has_par_rad )
 
      case ('hyper_pos')
         call read_xml_double_array( &

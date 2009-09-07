@@ -51,7 +51,7 @@ program raygun
 
   !call init_optix()
   call fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-       hyper_pos, hyper_a, hyper_c)
+       par_rad, hyper_pos, hyper_a, hyper_c)
 
   call plot_that_action(name, lobound, hibound, rays, numrays)
     
@@ -177,66 +177,113 @@ logical function check_bounds(point, lobound, hibound) result(answer)
 end function check_bounds
 
 subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-     hyper_pos, hyper_a, hyper_c)
+     par_rad, hyper_pos, hyper_a, hyper_c)
 
   implicit none
 
   integer, intent(IN)                                         :: numrays, numoptics
   integer, dimension(3), intent (IN)                          :: lobound, hibound
   double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos
-  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c
+  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
+  double precision, dimension(numrays)                        :: mask
+  double precision, dimension(2, 10)                             :: t_pos
   double precision, dimension(3)  :: t_arr = 0.0, prim_norm = 0.0, sec_norm = 0.0
   double precision                :: prim_a, prim_b, prim_c
   double precision                :: sec_a, sec_b, sec_c
   !double precision                :: det_a, det_b, det_c, det_norm
-  double precision                :: t, a, b, c, bsquare
-  integer                         :: i, bnc = 1
+  double precision                :: t, p_bsquare, s_bsquare
+  integer                         :: i, bnc = 1, t_calcd = 1
 
-  
-  do i = 1, numrays
-     !note rederive this to include parabola location
-     prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
-     prim_b = (2*rays(bnc, i, 1)*dir(i, 1) + 2*rays(bnc, i, 2)*dir(i, 2))/(4*par_a) - dir(i, 3)
-     prim_c = (rays(bnc, i, 1)**2 + rays(bnc, i, 2)**2)/(4*par_a) - rays(bnc, i, 3)
+  t_pos = 0.0
 
-     bsquare = prim_b**2 - 4*prim_a*prim_c
+  do
+     do i = 1, numrays
+        !note rederive this to include parabola location
+        prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
+        prim_b = (2*rays(bnc, i, 1)*dir(i, 1) + 2*rays(bnc, i, 2)*dir(i, 2))/(4*par_a) - dir(i, 3)
+        prim_c = (rays(bnc, i, 1)**2 + rays(bnc, i, 2)**2)/(4*par_a) - rays(bnc, i, 3)
 
-     !do a check on me.
-     sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
-          / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
-     sec_b = ((hyper_c**2 - hyper_a**2)*(2*dir(i, 1)*(rays(bnc, i, 1) - hyper_pos(1)) &
-          + (2 * dir(i, 2) * (rays(bnc, i, 2) - hyper_pos(2)))) + (hyper_a**2 * 2 * dir(i, 3)) &
-          * (rays(bnc, i, 3) - hyper_pos(3))) / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
-     sec_c = ((hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
-          + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
-          + hyper_pos(2)**2) + hyper_a**2 * (-rays(bnc, i, 3)**2 + 2*rays(bnc, i, 3)*hyper_pos(3) &
-          - hyper_pos(3)**2 + (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
-          * (hyper_c**2 - hyper_a**2))
+        p_bsquare = prim_b**2 - 4*prim_a*prim_c
 
-     print *, (sec_b**2 - 4*sec_a*sec_c)
+        !do a check on me.
+        sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
+             / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+        sec_b = (2*(hyper_c**2 - hyper_a**2)*(rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
+             + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2)) + & 
+             (2*hyper_a**2)*(-rays(bnc, i, 3)*dir(i, 3) + hyper_pos(3)*dir(i, 3))) &
+             / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
 
-     if (prim_a == 0.0) then
-        if ((bsquare) >= 0.0 .and. (.true.)) then
-           !go ahead
-           t = -prim_c/prim_b
-           t_arr = dir(i, :)*t
-           rays(2, i, :) = rays(1, i, :) + t_arr
-        else
-           !let it go!
-           print *, "ERROR, not intersect!"
+
+!         sec_b = ((hyper_c**2 - hyper_a**2)*(2*dir(i, 1)*(rays(bnc, i, 1) - hyper_pos(1)) &
+!              + (2 * dir(i, 2) * (rays(bnc, i, 2) - hyper_pos(2)))) + (hyper_a**2 * 2 * dir(i, 3)) &
+!              * (rays(bnc, i, 3) - hyper_pos(3))) / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+        sec_c = ((hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
+             + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
+             + hyper_pos(2)**2) + hyper_a**2 * (-rays(bnc, i, 3)**2 + 2*rays(bnc, i, 3)*hyper_pos(3) &
+             - hyper_pos(3)**2 + (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
+             * (hyper_c**2 - hyper_a**2))
+
+        s_bsquare = sec_b**2 - 4*sec_a*sec_c
+
+        if (prim_a == 0.0) then
+           if (p_bsquare >= 0.0 .and. (.true.)) then
+              !go ahead
+              t_pos(:, t_calcd) = (/-prim_c/prim_b, 1.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
+                 !good
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+              end if
+              t_calcd = t_calcd + 1
+
+              !rays(2, i, :) = rays(1, i, :) + t_arr
+           else
+              !let it go!
+              print *, "ERROR, not intersect!"
+           end if
+        else if (p_bsquare == 0) then
+           t_pos(:, t_calcd) = (/-prim_b/(2*prim_a), 1.0/)
+           t_calcd = t_calcd + 1
+        else if (p_bsquare > 0) then
+           t_pos(:, t_calcd) = (/(-prim_b + sqrt(p_bsquare))/(2*prim_a), 1.0/)
+           t_calcd = t_calcd + 1
+           t_pos(:, t_calcd) = (/(-prim_b - sqrt(p_bsquare))/(2*prim_a), 1.0/)
+           t_calcd = t_calcd + 1
+
+           print *, "How did we get here?"
         end if
-     else if (bsquare == 0) then
-        !right on
-     else if (bsquare > 0) then
-        print *, "How did we get here?"
-     else if (bsquare < 0) then
-        !fail
-        print *, "no intersection?!"
 
-     end if
 
+        if (sec_a == 0.0) then
+           if (s_bsquare >= 0.0 .and. (.true.)) then
+              !yeah
+              print *, "WAT?"
+           else
+              !wat?
+              print *, "ERROR"
+           end if
+        else if (s_bsquare == 0) then
+           t_pos(:, t_calcd) = (/-sec_b/(2*sec_a), 2.0/)
+           t_calcd = t_calcd + 1
+        else if (s_bsquare >= 0) then
+           print *, "INTERSECTIONS!"
+           t_pos(:, t_calcd) = (/(-sec_b + sqrt(s_bsquare))/(2*sec_a), 2.0/)
+           print *, "T for sec: ", t_pos(1, t_calcd)
+           t_calcd = t_calcd + 1
+           !t_pos(t_calcd) = (-sec_b - sqrt(s_bsquare))/(2*sec_a)
+           !t_calcd = t_calcd + 1
+        end if
+
+        print *, minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
+
+        t_calcd = 1
+     end do
+     print *, "HI"
+     !bnc = bnc + 1
+     exit
   end do
 
 end subroutine fire_lazors
