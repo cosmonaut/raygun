@@ -16,10 +16,11 @@ program raygun
 
   double precision, parameter     :: pi = 3.1415926535897932
 
-  integer                                           :: argc, bounces
+  integer                                           :: argc
   character(len=100)                                :: file
   double precision, dimension(:, :, :), allocatable :: rays
-  double precision, dimension(:, :), allocatable    :: dir, wavel
+  integer, dimension(:), allocatable                :: mask_ct  
+  double precision, dimension(:, :), allocatable    :: dir!, wavel
 
 
   print *,"O HAI WORLDS!"
@@ -43,6 +44,9 @@ program raygun
      call read_xml_file_config("test.xml")
   endif
 
+  allocate(mask_ct(numrays))
+  mask_ct = 1
+
   print *, "a: ", hyper_a
   print *, "hyper radius: ", hyper_rad
 
@@ -50,10 +54,10 @@ program raygun
   call init_rays()
 
   !call init_optix()
-  call fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
+  call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
        par_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
-  call plot_that_action(name, lobound, hibound, rays, numrays)
+  call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
     
   stop
 
@@ -176,7 +180,7 @@ logical function check_bounds(point, lobound, hibound) result(answer)
   end do
 end function check_bounds
 
-subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
+subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
      par_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
   implicit none
@@ -187,150 +191,246 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
   double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad, hyper_rad
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
-  double precision, dimension(numrays)                        :: mask
-  double precision, dimension(2, 10)                             :: t_pos
+  integer, dimension(numrays), intent(INOUT)                  :: mask_ct
+  double precision, dimension(2, 10)                          :: t_pos
+  logical, dimension(numrays)     :: mask
   double precision, dimension(3)  :: t_arr = 0.0, normal = 0.0
   double precision                :: prim_a, prim_b, prim_c
   double precision                :: sec_a, sec_b, sec_c
   !double precision                :: det_a, det_b, det_c, det_norm
-  double precision                :: t, p_bsquare, s_bsquare
+  double precision                :: p_bsquare, s_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
 
   t_pos = 0.0
+  mask = .false.
+  mask_ct = 1
 
   do
      do i = 1, numrays
-        !note rederive this to include parabola location
-        prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
-        prim_b = (2*rays(bnc, i, 1)*dir(i, 1) + 2*rays(bnc, i, 2)*dir(i, 2))/(4*par_a) - dir(i, 3)
-        prim_c = (rays(bnc, i, 1)**2 + rays(bnc, i, 2)**2)/(4*par_a) - rays(bnc, i, 3)
+     !do i = 30, 31
+        if (mask(i) .eqv. .false.) then
+           !note rederive this to include parabola location
+           prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
+           prim_b = (2*rays(bnc, i, 1)*dir(i, 1) + 2*rays(bnc, i, 2)*dir(i, 2))/(4*par_a) - dir(i, 3)
+           prim_c = (rays(bnc, i, 1)**2 + rays(bnc, i, 2)**2)/(4*par_a) - rays(bnc, i, 3)
 
-        p_bsquare = prim_b**2 - 4*prim_a*prim_c
+           p_bsquare = prim_b**2 - 4*prim_a*prim_c
 
-        !do a check on me.
-        sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
-             / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
-        sec_b = (2*(hyper_c**2 - hyper_a**2)*(rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
-             + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2)) + & 
-             (2*hyper_a**2)*(-rays(bnc, i, 3)*dir(i, 3) + hyper_pos(3)*dir(i, 3))) &
-             / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+           !do a check on me.
+           sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
+                / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+           sec_b = (2*(hyper_c**2 - hyper_a**2)*(rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
+                + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2)) + & 
+                (2*hyper_a**2)*(-rays(bnc, i, 3)*dir(i, 3) + hyper_pos(3)*dir(i, 3))) &
+                / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
 
 
-!         sec_b = ((hyper_c**2 - hyper_a**2)*(2*dir(i, 1)*(rays(bnc, i, 1) - hyper_pos(1)) &
-!              + (2 * dir(i, 2) * (rays(bnc, i, 2) - hyper_pos(2)))) + (hyper_a**2 * 2 * dir(i, 3)) &
-!              * (rays(bnc, i, 3) - hyper_pos(3))) / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
-        sec_c = ((hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
-             + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
-             + hyper_pos(2)**2) + hyper_a**2 * (-rays(bnc, i, 3)**2 + 2*rays(bnc, i, 3)*hyper_pos(3) &
-             - hyper_pos(3)**2 + (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
-             * (hyper_c**2 - hyper_a**2))
+           !         sec_b = ((hyper_c**2 - hyper_a**2)*(2*dir(i, 1)*(rays(bnc, i, 1) - hyper_pos(1)) &
+           !              + (2 * dir(i, 2) * (rays(bnc, i, 2) - hyper_pos(2)))) + (hyper_a**2 * 2 * dir(i, 3)) &
+           !              * (rays(bnc, i, 3) - hyper_pos(3))) / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+           sec_c = ((hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
+                + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
+                + hyper_pos(2)**2) + hyper_a**2 * (-rays(bnc, i, 3)**2 + 2*rays(bnc, i, 3)*hyper_pos(3) &
+                - hyper_pos(3)**2 + (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
+                * (hyper_c**2 - hyper_a**2))
 
-        s_bsquare = sec_b**2 - 4*sec_a*sec_c
+           s_bsquare = sec_b**2 - 4*sec_a*sec_c
 
-        !PRIMARY math
-        if (prim_a == 0.0) then
-           if (p_bsquare >= 0.0 .and. (.true.)) then
-              !go ahead
-              t_pos(:, t_calcd) = (/-prim_c/prim_b, 1.0/)
+           !PRIMARY math
+           print *, "P BSQUARE! ", p_bsquare
+           print *, "PRIM_A: ", prim_a
+           if (prim_a == 0.0) then
+              if (p_bsquare >= 0.0 .and. (.true.)) then
+                 !go ahead
+                 t_pos(:, t_calcd) = (/-prim_c/prim_b, 1.0/)
+                 t_arr = dir(i, :)*t_pos(1, t_calcd)
+                 if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
+                    !good
+                    t_calcd = t_calcd + 1
+                 else
+                    !not an intersection
+                    t_pos(:, t_calcd) = (/0.0, 0.0/)
+                    t_arr = 0.0
+                 end if
+
+              else
+                 !let it go!
+                 print *, "ERROR, not intersect!"
+              end if
+           else if (p_bsquare == 0) then
+              t_pos(:, t_calcd) = (/-prim_b/(2*prim_a), 1.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
                  !good
                  t_calcd = t_calcd + 1
               else
-                 !not an intersection
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
                  t_arr = 0.0
               end if
 
-              !rays(2, i, :) = rays(1, i, :) + t_arr
-           else
-              !let it go!
-              print *, "ERROR, not intersect!"
-           end if
-        else if (p_bsquare == 0) then
-           t_pos(:, t_calcd) = (/-prim_b/(2*prim_a), 1.0/)
-           t_arr = dir(i, :)*t_pos(1, t_calcd)
-           if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
-              !good
-              t_calcd = t_calcd + 1
-           else
-              t_pos(:, t_calcd) = (/0.0, 0.0/)
-              t_arr = 0.0
+           else if (p_bsquare > 0) then
+              print *, "PBSQUARE > 0??????? "
+              t_pos(:, t_calcd) = (/(-prim_b + sqrt(p_bsquare))/(2*prim_a), 1.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then              
+                 print *, "GOOD T", t_pos(1, t_calcd)
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+
+              t_pos(:, t_calcd) = (/(-prim_b - sqrt(p_bsquare))/(2*prim_a), 1.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then              
+                 print *, "GOOD T", t_pos(1, t_calcd)
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+              print *, "END PBSQUARE"
+
            end if
 
-        else if (p_bsquare > 0) then
-           t_pos(:, t_calcd) = (/(-prim_b + sqrt(p_bsquare))/(2*prim_a), 1.0/)
-           t_calcd = t_calcd + 1
-           t_pos(:, t_calcd) = (/(-prim_b - sqrt(p_bsquare))/(2*prim_a), 1.0/)
-           t_calcd = t_calcd + 1
+           !SECONDARY math
+           print *, "S_BSQUARE ", s_bsquare
+           if (sec_a == 0.0) then
+              if (s_bsquare >= 0.0 .and. (.true.)) then
+                 !yeah
+                 print *, "WAT?"
+              else
+                 !wat?
+                 print *, "ERROR"
+              end if
+           else if (s_bsquare == 0) then
+              t_pos(:, t_calcd) = (/-sec_b/(2*sec_a), 2.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
 
-           print *, "How did we get here?"
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
+                 !good
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+           else if (s_bsquare >= 0) then
+              !print *, "INTERSECTIONS!"
+              t_pos(:, t_calcd) = (/(-sec_b + sqrt(s_bsquare))/(2*sec_a), 2.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
+                 !print *, "T for sec: ", t_pos(1, t_calcd)
+                 print *, "Good S T: ", t_pos(1, t_calcd)
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+
+              !DO NOT WANT
+              
+              t_pos(:, t_calcd) = (/(-sec_b - sqrt(s_bsquare))/(2*sec_a), 2.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
+                 !print *, "T for sec: ", t_pos(1, t_calcd)
+                 print *, "Good S T: ", t_pos(1, t_calcd)
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+
+
+           end if
+
+           !print *, minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
+           !print *, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
+
+!            print *, "BEST T: ", minval(t_pos(1, :), 1, t_pos(1, :) > 0.0)
+!            print *, "TPOS"
+!            print *, t_pos
+!            print *, "END TPOS"
+
+           t_arr = dir(i, :) * minval(t_pos(1, :), 1, t_pos(1, :) > 0.0)
+           rays(bnc + 1, i, :) = rays(bnc, i, :) + t_arr
+
+!            print *, "RAYS: ", rays(bnc, i, :)
+!            print *, "ADVANCE RAYS: ", rays(bnc + 1, i, :)
+!            print *, t_arr
+
+           !Essential Logic
+           if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 1.0) then
+              !paraboloid normal
+              !print *, "PARABOLA"
+              normal = (/(2/(4*par_a))*rays(bnc, i, 1), & 
+                   (2/(4*par_a))*rays(bnc, i, 2), &
+                   -1.0/)           
+              normal = normal/(sqrt(dot_product(normal, normal)))
+
+              !print *, dir(i,:)
+
+              if (dir(i, 3) > 0.0) then
+                 mask(i) = .true.
+                 mask_ct(i) = bnc + 1
+              else
+                 mask_ct = bnc + 1
+              end if
+
+              dir(i, :) = dir(i, :) - 2*normal*cos(acos(dot_product(dir(i, :), normal)))
+              dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
+
+!               if (i == 20) then
+!                  print *, "DIRpar"
+!                  print *, dir(i, :)
+!               end if
+           else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 2.0) then
+              !hyperboloid normal
+              !print *, "HYPERBOLA!"
+              normal = (/(2*(rays(bnc, i, 1) - hyper_pos(1)))/(hyper_a**2), &
+                   (2*(rays(bnc, i, 2) - hyper_pos(2)))/(hyper_a**2), &
+                   (2*(-rays(bnc, i, 3) + hyper_pos(3)))/(hyper_c**2 - hyper_a**2)/)
+              normal = normal/(sqrt(dot_product(normal, normal)))
+
+              if (dir(i, 3) < 0.0) then
+                 mask(i) = .true.
+                 mask_ct(i) = bnc + 1
+              else
+                 mask_ct(i) = bnc + 1
+              end if
+
+              dir(i, :) = dir(i, :) - 2*normal*cos(acos(dot_product(dir(i, :), normal)))
+              dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
+
+              if (i == 20) then
+                 print *, "DIRhyp"
+                 print *, dir(i, :)
+              end if
+
+           end if
+
+           t_calcd = 1
+           t_pos = 0.0
         end if
-
-        !SECONDARY math
-        if (sec_a == 0.0) then
-           if (s_bsquare >= 0.0 .and. (.true.)) then
-              !yeah
-              print *, "WAT?"
-           else
-              !wat?
-              print *, "ERROR"
-           end if
-        else if (s_bsquare == 0) then
-           t_pos(:, t_calcd) = (/-sec_b/(2*sec_a), 2.0/)
-           t_calcd = t_calcd + 1
-        else if (s_bsquare >= 0) then
-           print *, "INTERSECTIONS!"
-           t_pos(:, t_calcd) = (/(-sec_b + sqrt(s_bsquare))/(2*sec_a), 2.0/)
-           t_arr = dir(i, :)*t_pos(1, t_calcd)
-
-           if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
-              print *, "T for sec: ", t_pos(1, t_calcd)
-              t_calcd = t_calcd + 1
-           else
-              t_pos(:, t_calcd) = (/0.0, 0.0/)
-              t_arr = 0.0
-           end if
-
-           !DO NOT WANT
-           !t_pos(t_calcd) = (-sec_b - sqrt(s_bsquare))/(2*sec_a)
-           !t_calcd = t_calcd + 1
-        end if
-
-        !Essential Logic
-        print *, minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
-        !print *, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
-        if (t_pos(i, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 1.0) then
-           !paraboloid normal
-           normal = (/(2/(4*prim_a))*rays(bnc, i, 1), & 
-                (2/(4*prim_a))*rays(bnc, i, 2), &
-                -1.0/)
-        else if (t_pos(i, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 1.0) then
-           !hyperboloid normal
-           normal = (/(2*(rays(bnc, i, 1) - hyper_pos(1)))/(sec_a**2), &
-                (2*(rays(bnc, i, 2) - hyper_pos(2)))/(sec_a**2), &
-                (2*(-rays(bnc, i, 3) + hyper_pos(3)))/(sec_c**2 - sec_a**2)/)
-        end if
-           
-        t_arr = dir(i, :) * minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
-        rays(2, i, :) = rays(1, i, :) + t_arr
-        
-
-        t_calcd = 1
      end do
-     print *, "HI"
-     !bnc = bnc + 1
-     exit
+     print *, "bounce", bnc
+     bnc = bnc + 1
+     if (bnc == 3) then
+       exit
+     end if
+     !exit
   end do
-
+  !print *, mask
+  
 end subroutine fire_lazors
 
 !valgrind hates you.
-subroutine plot_that_action(name, lobound, hibound, rays, numrays)
+subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   use plplot, PI => PL_PI
 
   integer, intent(IN)                                  :: numrays
   integer, dimension(3), intent (IN)                   :: lobound, hibound
+  integer, dimension(numrays), intent(IN)                  :: mask_ct
   character(len=40), intent(IN)                        :: name
   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
   real(plflt), dimension(1:2)                          :: x, y
@@ -388,7 +488,10 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
   call pllab("Z Axis", "Y Axis", "View from X axis. #[0x212b]")
   do i = 1, numrays
      if (rays(1, i, 1) == 0.0) then
-        call plline(rays(1:2,i,3), rays(1:2,i,2))
+        do j = 1, mask_ct(i) - 1
+           call plline(rays(j:j+1,i,3), rays(j:j+1,i,2))
+           !call plline(rays(2:3,i,3), rays(2:3,i,2))
+        end do
      else
         !nada
      end if
@@ -396,16 +499,17 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-1.0, 3.1, -0.6, 0.6, just, axis)
+  call plenv(-0.2, 3.1, -0.6, 0.6, just, axis)
   call pllab("Z Axis", "X Axis", "View from Y axis. #[0x212b]")
   do i = 1, numrays
-     if (rays(1, i, 2) == 0.0) then
-        call plline(rays(1:2,i,3), rays(1:2,i,1))
+     if (rays(1, i, 2) <= 0.01 .and. rays(1, i, 2) >= -0.01) then
+        do j = 1, mask_ct(i) - 1
+           call plline(rays(j:j+1,i,3), rays(j:j+1,i,1))
+           !call plline(rays(2:3,i,3), rays(2:3,i,1))
+        end do
      else
         !nada
      end if
-
-
   end do
 
 
