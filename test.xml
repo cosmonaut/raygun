@@ -18,7 +18,7 @@
 <hyper_a>1.1457070964337681</hyper_a>
 <hyper_c>1.55</hyper_c>
 
-<optics>
+<!--<optics>
   <optic1>
     <type></type>
     <position></position>
@@ -26,4 +26,5 @@
     <diameter></diameter>
   </optic1>
 </optics>
-</raytrace>
+</raytrace> -->
+

@@ -51,7 +51,7 @@ program raygun
 
   !call init_optix()
   call fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-       par_rad, hyper_pos, hyper_a, hyper_c)
+       par_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
   call plot_that_action(name, lobound, hibound, rays, numrays)
     
@@ -177,19 +177,19 @@ logical function check_bounds(point, lobound, hibound) result(answer)
 end function check_bounds
 
 subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-     par_rad, hyper_pos, hyper_a, hyper_c)
+     par_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
   implicit none
 
   integer, intent(IN)                                         :: numrays, numoptics
   integer, dimension(3), intent (IN)                          :: lobound, hibound
   double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos
-  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad
+  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad, hyper_rad
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
   double precision, dimension(numrays)                        :: mask
   double precision, dimension(2, 10)                             :: t_pos
-  double precision, dimension(3)  :: t_arr = 0.0, prim_norm = 0.0, sec_norm = 0.0
+  double precision, dimension(3)  :: t_arr = 0.0, normal = 0.0
   double precision                :: prim_a, prim_b, prim_c
   double precision                :: sec_a, sec_b, sec_c
   !double precision                :: det_a, det_b, det_c, det_norm
@@ -227,6 +227,7 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
 
         s_bsquare = sec_b**2 - 4*sec_a*sec_c
 
+        !PRIMARY math
         if (prim_a == 0.0) then
            if (p_bsquare >= 0.0 .and. (.true.)) then
               !go ahead
@@ -234,10 +235,12 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
                  !good
+                 t_calcd = t_calcd + 1
               else
+                 !not an intersection
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
               end if
-              t_calcd = t_calcd + 1
 
               !rays(2, i, :) = rays(1, i, :) + t_arr
            else
@@ -246,7 +249,15 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
            end if
         else if (p_bsquare == 0) then
            t_pos(:, t_calcd) = (/-prim_b/(2*prim_a), 1.0/)
-           t_calcd = t_calcd + 1
+           t_arr = dir(i, :)*t_pos(1, t_calcd)
+           if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
+              !good
+              t_calcd = t_calcd + 1
+           else
+              t_pos(:, t_calcd) = (/0.0, 0.0/)
+              t_arr = 0.0
+           end if
+
         else if (p_bsquare > 0) then
            t_pos(:, t_calcd) = (/(-prim_b + sqrt(p_bsquare))/(2*prim_a), 1.0/)
            t_calcd = t_calcd + 1
@@ -256,7 +267,7 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
            print *, "How did we get here?"
         end if
 
-
+        !SECONDARY math
         if (sec_a == 0.0) then
            if (s_bsquare >= 0.0 .and. (.true.)) then
               !yeah
@@ -271,13 +282,39 @@ subroutine fire_lazors(rays, dir, lobound, hibound, numrays, numoptics, par_pos,
         else if (s_bsquare >= 0) then
            print *, "INTERSECTIONS!"
            t_pos(:, t_calcd) = (/(-sec_b + sqrt(s_bsquare))/(2*sec_a), 2.0/)
-           print *, "T for sec: ", t_pos(1, t_calcd)
-           t_calcd = t_calcd + 1
+           t_arr = dir(i, :)*t_pos(1, t_calcd)
+
+           if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
+              print *, "T for sec: ", t_pos(1, t_calcd)
+              t_calcd = t_calcd + 1
+           else
+              t_pos(:, t_calcd) = (/0.0, 0.0/)
+              t_arr = 0.0
+           end if
+
+           !DO NOT WANT
            !t_pos(t_calcd) = (-sec_b - sqrt(s_bsquare))/(2*sec_a)
            !t_calcd = t_calcd + 1
         end if
 
+        !Essential Logic
         print *, minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
+        !print *, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
+        if (t_pos(i, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 1.0) then
+           !paraboloid normal
+           normal = (/(2/(4*prim_a))*rays(bnc, i, 1), & 
+                (2/(4*prim_a))*rays(bnc, i, 2), &
+                -1.0/)
+        else if (t_pos(i, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 1.0) then
+           !hyperboloid normal
+           normal = (/(2*(rays(bnc, i, 1) - hyper_pos(1)))/(sec_a**2), &
+                (2*(rays(bnc, i, 2) - hyper_pos(2)))/(sec_a**2), &
+                (2*(-rays(bnc, i, 3) + hyper_pos(3)))/(sec_c**2 - sec_a**2)/)
+        end if
+           
+        t_arr = dir(i, :) * minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
+        rays(2, i, :) = rays(1, i, :) + t_arr
+        
 
         t_calcd = 1
      end do
@@ -347,17 +384,28 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays)
 
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
-  call plenv(-1.0, 0.4, -0.6, 0.6, just, axis)
+  call plenv(-1.0, 3.1, -0.6, 0.6, just, axis)
   call pllab("Z Axis", "Y Axis", "View from X axis. #[0x212b]")
   do i = 1, numrays
-     call plline(rays(1:2,i,3), rays(1:2,i,2))
+     if (rays(1, i, 1) == 0.0) then
+        call plline(rays(1:2,i,3), rays(1:2,i,2))
+     else
+        !nada
+     end if
   end do
 
   call plcol0(15)
-  call plenv(zmin, zmax, xmin, xmax, just, axis)
+  !call plenv(zmin, zmax, xmin, xmax, just, axis)
+  call plenv(-1.0, 3.1, -0.6, 0.6, just, axis)
   call pllab("Z Axis", "X Axis", "View from Y axis. #[0x212b]")
   do i = 1, numrays
-     call plline(rays(1:2,i,3), rays(1:2,i,1))
+     if (rays(1, i, 2) == 0.0) then
+        call plline(rays(1:2,i,3), rays(1:2,i,1))
+     else
+        !nada
+     end if
+
+
   end do
 
 
