@@ -55,7 +55,7 @@ program raygun
 
   !call init_optix()
   call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-       par_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
+       par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
     
@@ -181,24 +181,24 @@ logical function check_bounds(point, lobound, hibound) result(answer)
 end function check_bounds
 
 subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-     par_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
+     par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
   implicit none
 
   integer, intent(IN)                                         :: numrays, numoptics
   integer, dimension(3), intent (IN)                          :: lobound, hibound
   double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos
-  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad, hyper_rad
+  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad, hyper_rad, par_in_rad
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
   integer, dimension(numrays), intent(INOUT)                  :: mask_ct
-  double precision, dimension(2, 10)                          :: t_pos
+  double precision, dimension(2, 20)                          :: t_pos
   logical, dimension(numrays)     :: mask
   double precision, dimension(3)  :: t_arr = 0.0, normal = 0.0
   double precision                :: prim_a, prim_b, prim_c
   double precision                :: sec_a, sec_b, sec_c
-  !double precision                :: det_a, det_b, det_c, det_norm
-  double precision                :: p_bsquare, s_bsquare
+  double precision                :: det_a, det_b, det_c
+  double precision                :: p_bsquare, s_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
 
   t_pos = 0.0
@@ -236,15 +236,21 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
            s_bsquare = sec_b**2 - 4*sec_a*sec_c
 
+           det_a = 0.0
+           det_b = dir(i, 3)
+           det_c = rays(bnc, i, 3 + 0.1)
+
+           d_bsquare = det_b**2 - 4*det_a*det_c
+           
+
            !PRIMARY math
-           print *, "P BSQUARE! ", p_bsquare
-           print *, "PRIM_A: ", prim_a
            if (prim_a == 0.0) then
               if (p_bsquare >= 0.0 .and. (.true.)) then
                  !go ahead
                  t_pos(:, t_calcd) = (/-prim_c/prim_b, 1.0/)
                  t_arr = dir(i, :)*t_pos(1, t_calcd)
-                 if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
+                 if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
+                      .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then
                     !good
                     t_calcd = t_calcd + 1
                  else
@@ -260,7 +266,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
            else if (p_bsquare == 0) then
               t_pos(:, t_calcd) = (/-prim_b/(2*prim_a), 1.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
-              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
+                   .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then
                  !good
                  t_calcd = t_calcd + 1
               else
@@ -269,11 +276,12 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               end if
 
            else if (p_bsquare > 0) then
-              print *, "PBSQUARE > 0??????? "
+              !print *, "PBSQUARE > 0??????? "
               t_pos(:, t_calcd) = (/(-prim_b + sqrt(p_bsquare))/(2*prim_a), 1.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
-              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then              
-                 print *, "GOOD T", t_pos(1, t_calcd)
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
+                   .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then    
+                 !print *, "GOOD T", t_pos(1, t_calcd)
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -282,19 +290,20 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
               t_pos(:, t_calcd) = (/(-prim_b - sqrt(p_bsquare))/(2*prim_a), 1.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
-              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad) then              
-                 print *, "GOOD T", t_pos(1, t_calcd)
+              if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
+                   .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then
+                 !print *, "GOOD T", t_pos(1, t_calcd)
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
                  t_arr = 0.0
               end if
-              print *, "END PBSQUARE"
+              
 
            end if
 
            !SECONDARY math
-           print *, "S_BSQUARE ", s_bsquare
+           !print *, "S_BSQUARE ", s_bsquare
            if (sec_a == 0.0) then
               if (s_bsquare >= 0.0 .and. (.true.)) then
                  !yeah
@@ -321,7 +330,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
                  !print *, "T for sec: ", t_pos(1, t_calcd)
-                 print *, "Good S T: ", t_pos(1, t_calcd)
+                 !print *, "Good S T: ", t_pos(1, t_calcd)
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -334,15 +343,29 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
                  !print *, "T for sec: ", t_pos(1, t_calcd)
-                 print *, "Good S T: ", t_pos(1, t_calcd)
+                 !print *, "Good S T: ", t_pos(1, t_calcd)
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
                  t_arr = 0.0
               end if
 
-
            end if
+
+           if (det_a == 0.0) then
+              if (d_bsquare >= 0.0) then
+                 t_pos(:, t_calcd) = (/-det_c/det_b, 3.0/)
+                 t_arr = dir(i, :)*t_pos(1, t_calcd)
+                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.5 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.5) then
+                    print *, "DETECTOR T"
+                    t_calcd = t_calcd + 1
+                 else
+                    t_pos(:, t_calcd) = (/0.0, 0.0/)
+                    t_arr = 0.0
+                 end if
+              end if
+           end if
+
 
            !print *, minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
            !print *, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
@@ -391,6 +414,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
                    (2*(rays(bnc, i, 2) - hyper_pos(2)))/(hyper_a**2), &
                    (2*(-rays(bnc, i, 3) + hyper_pos(3)))/(hyper_c**2 - hyper_a**2)/)
               normal = normal/(sqrt(dot_product(normal, normal)))
+              !normal = -normal
 
               if (dir(i, 3) < 0.0) then
                  mask(i) = .true.
@@ -401,12 +425,20 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
               dir(i, :) = dir(i, :) - 2*normal*cos(acos(dot_product(dir(i, :), normal)))
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
+              print *, "hyper bounce dir: ", dir(i, :)
 
-              if (i == 20) then
-                 print *, "DIRhyp"
-                 print *, dir(i, :)
-              end if
-
+!               if (i == 20) then
+!                  print *, "DIRhyp"
+!                  print *, dir(i, :)
+!               end if
+           else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 3.0) then
+              print *, "DETECTOR"
+              !no normal.
+              
+              mask(i) = .true.
+              mask_ct(i) = bnc + 1
+           else
+              print *, "EPIC ERROR, NO T"
            end if
 
            t_calcd = 1
@@ -415,7 +447,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
      end do
      print *, "bounce", bnc
      bnc = bnc + 1
-     if (bnc == 3) then
+     if (bnc == 4) then
        exit
      end if
      !exit
@@ -503,8 +535,10 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   call pllab("Z Axis", "X Axis", "View from Y axis. #[0x212b]")
   do i = 1, numrays
      if (rays(1, i, 2) <= 0.01 .and. rays(1, i, 2) >= -0.01) then
+        print *, mask_ct(i)
         do j = 1, mask_ct(i) - 1
            call plline(rays(j:j+1,i,3), rays(j:j+1,i,1))
+           print *, rays(j:j+1, i, 1)
            !call plline(rays(2:3,i,3), rays(2:3,i,1))
         end do
      else

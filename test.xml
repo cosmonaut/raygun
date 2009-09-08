@@ -13,6 +13,7 @@
 <par_pos>0.0 0.0 0.0</par_pos>
 <par_a>3.0</par_a>
 <par_rad>0.5</par_rad>
+<par_in_rad>0.0065</par_in_rad>
 <hyper_pos>0.0 0.0 1.45</hyper_pos>
 <hyper_rad>6.74524025385312836E-002</hyper_rad>
 <hyper_a>1.1457070964337681</hyper_a>
