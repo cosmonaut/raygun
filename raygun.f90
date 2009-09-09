@@ -207,7 +207,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
   do
      do i = 1, numrays
-     !do i = 30, 31
+     !do i = 50, 51
         if (mask(i) .eqv. .false.) then
            !note rederive this to include parabola location
            prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4*par_a)
@@ -217,32 +217,43 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
            p_bsquare = prim_b**2 - 4*prim_a*prim_c
 
            !do a check on me.
-           sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
-                / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
-           sec_b = (2*(hyper_c**2 - hyper_a**2)*(rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
-                + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2)) + & 
-                (2*hyper_a**2)*(-rays(bnc, i, 3)*dir(i, 3) + hyper_pos(3)*dir(i, 3))) &
-                / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+!            sec_a = ((hyper_c**2 - hyper_a**2)*(dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a**2 * dir(i, 3)**2))&
+!                 / ((hyper_a**2)*(hyper_c**2 - hyper_a**2))
+
+           sec_a = ( (hyper_c**2 - hyper_a**2) * (dir(i, 1)**2 + dir(i, 2)**2) - (hyper_a * dir(i, 3))**2) &
+                / ((hyper_a**2) * (hyper_c**2 - hyper_a**2))
+
+!            sec_b = ( (2*(hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
+!                 + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2))) &
+!                 + ((2*hyper_a**2)*(-rays(bnc, i, 3)*dir(i, 3) + hyper_pos(3)*dir(i, 3)))) &
+!                 / ((hyper_a**2)*(hyper_c**2 - hyper_a**2))
+
+           sec_b = ( (2*(hyper_c**2 - hyper_a**2)) * (rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
+                + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2)) + (2*(hyper_a**2)) * (hyper_pos(3)*dir(i, 3) &
+                - rays(bnc, i, 3)*dir(i, 3))) / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
+
+!            sec_c = ( ((hyper_c**2 - hyper_a**2)*((rays(bnc, i, 1))**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
+!                 + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
+!                 + hyper_pos(2)**2)) + (hyper_a**2)*(2*rays(bnc, i, 3)*hyper_pos(3) - rays(bnc, i, 3)**2 &
+!                 - (hyper_pos(3)**2) + (hyper_c**2 - hyper_a**2))) &
+!                 / ((hyper_a**2)*(hyper_c**2 - hyper_a**2))
+
+           sec_c = ( (hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 + hyper_pos(1)**2 &
+                - 2*rays(bnc, i, 1)*hyper_pos(1) + rays(bnc, i, 2)**2 + hyper_pos(2)**2 &
+                - 2*rays(bnc, i, 2)*hyper_pos(2)) + (hyper_a**2) * (2*rays(bnc, i, 3)*hyper_pos(3) &
+                - rays(bnc, i, 3)**2 - hyper_pos(3)**2 + (hyper_c**2 - hyper_a**2))) &
+                / ((hyper_a**2)*(hyper_c**2 - hyper_a**2))
 
 
-           !         sec_b = ((hyper_c**2 - hyper_a**2)*(2*dir(i, 1)*(rays(bnc, i, 1) - hyper_pos(1)) &
-           !              + (2 * dir(i, 2) * (rays(bnc, i, 2) - hyper_pos(2)))) + (hyper_a**2 * 2 * dir(i, 3)) &
-           !              * (rays(bnc, i, 3) - hyper_pos(3))) / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
-           sec_c = ((hyper_c**2 - hyper_a**2) * (rays(bnc, i, 1)**2 - 2*rays(bnc, i, 1)*hyper_pos(1) &
-                + hyper_pos(1)**2 + rays(bnc, i, 2)**2 - 2*rays(bnc, i, 2)*hyper_pos(2) &
-                + hyper_pos(2)**2) + hyper_a**2 * (-rays(bnc, i, 3)**2 + 2*rays(bnc, i, 3)*hyper_pos(3) &
-                - hyper_pos(3)**2 + (hyper_a**2 * (hyper_c**2 - hyper_a**2)))) / (hyper_a**2 &
-                * (hyper_c**2 - hyper_a**2))
 
            s_bsquare = sec_b**2 - 4*sec_a*sec_c
 
            det_a = 0.0
            det_b = dir(i, 3)
-           det_c = rays(bnc, i, 3 + 0.1)
+           det_c = rays(bnc, i, 3) + 0.1
 
            d_bsquare = det_b**2 - 4*det_a*det_c
            
-
            !PRIMARY math
            if (prim_a == 0.0) then
               if (p_bsquare >= 0.0 .and. (.true.)) then
@@ -303,8 +314,12 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
            end if
 
            !SECONDARY math
-           !print *, "S_BSQUARE ", s_bsquare
+           print *, "S_BSQUARE ", s_bsquare
+           print *, "sec_a ", sec_a
+           print *, "sec_b ", sec_b
+           print *, "sec_c ", sec_c
            if (sec_a == 0.0) then
+              print *, "SECONDARY A IS 0!!!1"
               if (s_bsquare >= 0.0 .and. (.true.)) then
                  !yeah
                  print *, "WAT?"
@@ -317,20 +332,25 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               t_arr = dir(i, :)*t_pos(1, t_calcd)
 
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
+                   !.and. (rays(bnc, i, 3) + t_arr(3) >= 2.3)) then !.and. (rays(bnc, i, 3) + t_arr(3) <= 2.5958)) then
                  !good
+                 print *, "BSQUARE IS 0"
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
                  t_arr = 0.0
               end if
            else if (s_bsquare >= 0) then
+              ! LET'S MAKE A BOUNDING BOX FOR THE USEFUL HYPERBOLOID!!1111oneoneoneone
               !print *, "INTERSECTIONS!"
-              t_pos(:, t_calcd) = (/(-sec_b + sqrt(s_bsquare))/(2*sec_a), 2.0/)
-              t_arr = dir(i, :)*t_pos(1, t_calcd)
+             t_pos(:, t_calcd) = (/ (-sec_b + sqrt(s_bsquare))/(2*sec_a), 2.0/)
+             t_arr = dir(i, :)*t_pos(1, t_calcd)
 
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
+                   !.and. (rays(bnc, i, 3) + t_arr(3) >= 2.3)) then !.and. (rays(bnc, i, 3) + t_arr(3) <= 2.5958)) then
                  !print *, "T for sec: ", t_pos(1, t_calcd)
                  !print *, "Good S T: ", t_pos(1, t_calcd)
+                 print *, "FIRST SEC T GOOD", t_pos(1, t_calcd)
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -342,8 +362,10 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               t_pos(:, t_calcd) = (/(-sec_b - sqrt(s_bsquare))/(2*sec_a), 2.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= hyper_rad) then
+                   !.and. (rays(bnc, i, 3) + t_arr(3) >= 2.3)) then !.and. (rays(bnc, i, 3) + t_arr(3) <= 2.5958)) then
                  !print *, "T for sec: ", t_pos(1, t_calcd)
                  !print *, "Good S T: ", t_pos(1, t_calcd)
+                 print *, "SECOND sect good"
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -354,10 +376,10 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
            if (det_a == 0.0) then
               if (d_bsquare >= 0.0) then
-                 t_pos(:, t_calcd) = (/-det_c/det_b, 3.0/)
+                 t_pos(:, t_calcd) = (/ -det_c/det_b, 3.0/)
                  t_arr = dir(i, :)*t_pos(1, t_calcd)
-                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.5 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.5) then
-                    print *, "DETECTOR T"
+                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5.0 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 5.0) then
+                    print *, "DETECTOR T", t_pos(1, t_calcd)
                     t_calcd = t_calcd + 1
                  else
                     t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -383,15 +405,15 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 !            print *, t_arr
 
            !Essential Logic
-           if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 1.0) then
+           if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 1.0) then
               !paraboloid normal
               !print *, "PARABOLA"
               normal = (/(2/(4*par_a))*rays(bnc, i, 1), & 
                    (2/(4*par_a))*rays(bnc, i, 2), &
                    -1.0/)           
               normal = normal/(sqrt(dot_product(normal, normal)))
-
-              !print *, dir(i,:)
+              
+              !print *, "PARABOLA T"
 
               if (dir(i, 3) > 0.0) then
                  mask(i) = .true.
@@ -403,19 +425,18 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               dir(i, :) = dir(i, :) - 2*normal*cos(acos(dot_product(dir(i, :), normal)))
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
 
-!               if (i == 20) then
-!                  print *, "DIRpar"
-!                  print *, dir(i, :)
-!               end if
-           else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 2.0) then
+           else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 2.0) then
               !hyperboloid normal
               !print *, "HYPERBOLA!"
               normal = (/(2*(rays(bnc, i, 1) - hyper_pos(1)))/(hyper_a**2), &
                    (2*(rays(bnc, i, 2) - hyper_pos(2)))/(hyper_a**2), &
                    (2*(-rays(bnc, i, 3) + hyper_pos(3)))/(hyper_c**2 - hyper_a**2)/)
               normal = normal/(sqrt(dot_product(normal, normal)))
-              !normal = -normal
+              normal(3) = abs(normal(3))
+              call debug_plot(normal)
+              print *, "HYPER NORMAL ", normal
 
+              print *, "Position on hyper: ", rays(bnc + 1, i, :)
               if (dir(i, 3) < 0.0) then
                  mask(i) = .true.
                  mask_ct(i) = bnc + 1
@@ -423,24 +444,23 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
                  mask_ct(i) = bnc + 1
               end if
 
+              print *, "Incoming hyp dir: ", dir(i, :)
               dir(i, :) = dir(i, :) - 2*normal*cos(acos(dot_product(dir(i, :), normal)))
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
+
               print *, "hyper bounce dir: ", dir(i, :)
 
-!               if (i == 20) then
-!                  print *, "DIRhyp"
-!                  print *, dir(i, :)
-!               end if
-           else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)) == 3.0) then
-              print *, "DETECTOR"
+           else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 3.0) then
+              !print *, "DETECTOR"
               !no normal.
-              
+              print *, "DETECTOR MASK!"
+              print *, rays(bnc + 1, i, 3)
               mask(i) = .true.
               mask_ct(i) = bnc + 1
            else
               print *, "EPIC ERROR, NO T"
            end if
-
+           
            t_calcd = 1
            t_pos = 0.0
         end if
@@ -452,7 +472,13 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
      end if
      !exit
   end do
-  !print *, mask
+  print *, mask
+
+!   do i = 1, numrays
+!      print *, "X: ", rays(4, i, 1)
+!      print *, "Y: ", rays(4, i, 2)
+!      print *, "Z: ", rays(4, i, 3)
+!   end do
   
 end subroutine fire_lazors
 
@@ -465,7 +491,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   integer, dimension(numrays), intent(IN)                  :: mask_ct
   character(len=40), intent(IN)                        :: name
   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
-  real(plflt), dimension(1:2)                          :: x, y
+  real(plflt), dimension(40)                           :: x, y
   real(plflt)                                          :: xmin, xmax, ymin, ymax, zmin, zmax
   integer                                              :: just, axis
 
@@ -479,10 +505,6 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   just = 1
   axis = 0
 
-  x(1) = 0
-  x(2) = 5
-  y(1) = 0
-  y(2) = 5
 
   print *, "PLOTTING..."
   !We will always use Z as the optical axis.
@@ -512,7 +534,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   call plcol0(1)
   !call plwid(0)
   !call plline(rays(:,1,1), rays(:,1,2))
-  call plline(x, y)
+  !call plline(x, y)
 
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
@@ -535,27 +557,119 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   call pllab("Z Axis", "X Axis", "View from Y axis. #[0x212b]")
   do i = 1, numrays
      if (rays(1, i, 2) <= 0.01 .and. rays(1, i, 2) >= -0.01) then
-        print *, mask_ct(i)
+        !print *, mask_ct(i)
         do j = 1, mask_ct(i) - 1
            call plline(rays(j:j+1,i,3), rays(j:j+1,i,1))
-           print *, rays(j:j+1, i, 1)
-           !call plline(rays(2:3,i,3), rays(2:3,i,1))
+           !print *, rays(j:j+1, i, 1)
         end do
+        !call plline(rays(3:4,i,3), rays(3:4,i,1))
+        !end do
      else
         !nada
      end if
   end do
 
+  step = 1.0/160.0
+  !print *, "STEP: ", step
+  x = 0.0
+  x(1) = 2.59570709643376
+  do i = 1, 40
+     !print *, step
+     if (i == 1) then
+        !nada
+     else
+        x(i) = x(i - 1) + step
+     end if
+     y(i) = sqrt((((x(i)-1.45)**2)/(1.1457070964337**2) - 1)*(1.55**2 - 1.1457070964337**2))
+  end do
+
+  !call plpoin(x(:),y(:),2)
+  call plcol0(1)
+  call plline(x, y)
+  !print *, x
+  y = -y
+  call plline(x, y)
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-0.6, 0.6, -0.6, 0.6, just, axis)
+  call plenv(-2.0, 2.0, -2.0, 2.0, just, axis)
   call pllab("X Axis", "Y Axis", "View from detector. #[0x212b]")
   !call plssym(0.0, 1.0)
-  call plpoin(rays(1,:,1), rays(1,:,2), 95)!95
-
+  !call plpoin(rays(1,:,1), rays(1,:,2), 95)!95
+  do i = 1, numrays
+     if (rays(4, i, 3) <= -0.05) then
+        call plpoin(rays(4,:,1), rays(4,:,2), 95)
+     end if
+     !call plpoin(rays(4,:,1), rays(4,:,2), 95)
+  end do
+  !print *, rays(4,:,1)
+  !print *, rays(4,:,2)
   !Good news, everyone!
   call plend()
 
 end subroutine plot_that_action
 !kthxbai
+
+subroutine debug_plot(normal)
+  use plplot, PI => PL_PI
+
+!subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
+  double precision, dimension(3), intent(IN)             :: normal
+  integer :: just, axis
+ !  integer, intent(IN)                                  :: numrays
+!   integer, dimension(3), intent (IN)                   :: lobound, hibound
+!   integer, dimension(numrays), intent(IN)                  :: mask_ct
+!   character(len=40), intent(IN)                        :: name
+!   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
+!   real(plflt), dimension(1:2)                          :: x, y
+!   real(plflt)                                          :: xmin, xmax, ymin, ymax, zmin, zmax
+!   integer                                              :: just, axis
+
+!   xmin = lobound(1)
+!   ymin = lobound(2)
+!   xmax = hibound(1)
+!   ymax = hibound(2)
+!   zmin = lobound(3)
+!   zmax = hibound(3)
+
+!   just = 1
+!   axis = 0
+
+!   x(1) = 0
+!   x(2) = 5
+!   y(1) = 0
+!   y(2) = 5
+
+!   print *, "PLOTTING..."
+  !We will always use Z as the optical axis.
+
+  !note to self #[0x212b] is the plplot escape seq for angstrom.
+  just = 1
+  axis = 0
+
+
+  !I need black, damnit.
+  call plscol0(15, 0, 0, 0)
+
+  !name file, set plot device.  pdfcairo seems to give the best
+  !bounding box. LaTeX loves it. I would take pdfcairo to prom.
+  call plsfnam("debug" // ".pdf")
+  call plsdev("pdfcairo")
+
+  call plscolbg(255, 255, 255)
+  call plinit()
+  call plfont(2)
+  !call plfontld(1)
+
+  call plcol0(15)
+  call plenv(-1.0, 1.0, -1.0, 1.0, just, axis)
+  call pllab("X Axis", "Y Axis", "View from Z axis. #[0x212b]")
+
+  call plcol0(1)
+  !call plline(x, y)
+
+  call plline((/0.0, 0.0/), (/normal(3), normal(1)/))
+
+  call plend()
+
+end subroutine debug_plot
