@@ -156,6 +156,11 @@ contains
        rays(1, i, :) = beamcenter + rays(1, i, :)
     end do
 
+    do i = 1, numrays
+       dir(i, :) = matmul(roty, dir(i, :))
+       dir(i, :) = matmul(rotx, dir(i, :))
+    end do
+
   end subroutine init_rays
 
 end program raygun
@@ -409,29 +414,19 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
            !print *, minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
            !print *, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
 
-!            print *, "BEST T: ", minval(t_pos(1, :), 1, t_pos(1, :) > 0.0)
-!            print *, "TPOS"
-!            print *, t_pos
-!            print *, "END TPOS"
-
            t_arr = dir(i, :) * minval(t_pos(1, :), 1, t_pos(1, :) > 0.1)
            rays(bnc + 1, i, :) = rays(bnc, i, :) + t_arr
 
 !            print *, "RAYS: ", rays(bnc, i, :)
 !            print *, "ADVANCE RAYS: ", rays(bnc + 1, i, :)
-!            print *, t_arr
 
            !Essential Logic
            if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 1.0) then
-              !paraboloid normal
-              !print *, "PARABOLA"
-              normal = (/(2/(4*par_a))*rays(bnc, i, 1), & 
-                   (2/(4*par_a))*rays(bnc, i, 2), &
+              normal = (/(2/(4*par_a))*rays(bnc + 1, i, 1), & 
+                   (2/(4*par_a))*rays(bnc + 1, i, 2), &
                    -1.0/)           
               normal = normal/(sqrt(dot_product(normal, normal)))
               
-              !print *, "PARABOLA T"
-
               if (dir(i, 3) > 0.0) then
                  print *, "PARA MASK"
                  mask(i) = .true.
@@ -440,21 +435,23 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
                  mask_ct = bnc + 1
               end if
 
-              dir(i, :) = dir(i, :) - 2*normal*cos(acos(dot_product(dir(i, :), normal)))
+              !dir(i, :) = dir(i, :) - 2.0D0*normal*cos(acos(dot_product(dir(i, :), normal)))
+              dir(i, :) = dir(i, :) - 2*normal*dot_product(dir(i, :), normal)
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 2.0) then
               !hyperboloid normal
               !print *, "HYPERBOLA!"
-              normal = (/(2.0D0*(rays(bnc, i, 1) - hyper_pos(1)))/(hyper_c**2 - hyper_a**2), &
-                   (2.0D0*(rays(bnc, i, 2) - hyper_pos(2)))/(hyper_c**2 - hyper_a**2), &
-                   (-2.0D0*(rays(bnc, i, 3) + hyper_pos(3)))/(hyper_a**2)/)
+              normal = (/(2.0D0*(rays(bnc + 1, i, 1) - hyper_pos(1)))/(hyper_c**2 - hyper_a**2), &
+                   (2.0D0*(rays(bnc + 1, i, 2) - hyper_pos(2)))/(hyper_c**2 - hyper_a**2), &
+                   (-2.0D0*(rays(bnc + 1, i, 3) + hyper_pos(3)))/(hyper_a**2)/)
               normal = normal/(sqrt(dot_product(normal, normal)))
-              normal(3) = abs(normal(3))
-
-              call debug_plot(normal)
+              normal(3) = -abs(normal(3))
+              !normal = -normal
+              !call debug_plot(normal)
               print *, "HYPER NORMAL ", normal
 
+              print *, "Position before hyper if: ", rays(bnc, i, :)
               print *, "Position on hyper: ", rays(bnc + 1, i, :)
               if (dir(i, 3) < 0.0) then
                  print *, "HYPER MASK"
@@ -465,7 +462,9 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               end if
 
               print *, "Incoming hyp dir: ", dir(i, :)
-              dir(i, :) = dir(i, :) - 2*normal*cos(acos(dot_product(dir(i, :), normal)))
+              dir(i, :) = dir(i, :) - 2*normal*dot_product(dir(i, :), normal)
+              !dir(i, :) = dir(i, :) - 2.0D0*normal*cos(acos(dot_product(dir(i, :), normal)))
+              !dir(i, :) = dir(i, :) - 2.0D0*normal*dot_product(dir(i, :), normal)
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
 
               print *, "hyper bounce dir: ", dir(i, :)
@@ -549,10 +548,21 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   !call plfontld(1)
 
   call plcol0(15)
-  call plenv(xmin, xmax, ymin, ymax, just, axis)
+  call plenv(-0.6, 0.6, -0.6, 0.6, just, axis)
   call pllab("X Axis", "Y Axis", "View from Z axis. #[0x212b]")
 
   call plcol0(1)
+  do i = 1, numrays
+     !if (rays(1, i, 1) == 0.0) then
+     do j = 1, mask_ct(i) - 1
+        call plline(rays(j:j+1,i,1), rays(j:j+1,i,2))
+        !call plline(rays(2:3,i,3), rays(2:3,i,2))
+     end do
+     !else
+        !nada
+     !end if
+  end do
+
   !call plwid(0)
   !call plline(rays(:,1,1), rays(:,1,2))
   !call plline(x, y)
