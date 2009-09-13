@@ -321,7 +321,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               else
                  !how did we get here?!
                  print *, "ERROR"
-                 stop
+                 !stop
               end if
            else if (s_bsquare == 0) then
               t_pos(:, t_calcd) = (/-sec_b/(2.0D0*sec_a), 2.0/)
@@ -366,7 +366,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
                  t_pos(:, t_calcd) = (/ -det_c/det_b, 3.0/)
                  t_arr = dir(i, :)*t_pos(1, t_calcd)
                  print *, "det tarr: ", t_arr
-                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.5 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.5 .and. dir(i, 3) > 0) then
+                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.5 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.5) then
                     !print *, "DETECTOR T", t_pos(1, t_calcd)
                     t_calcd = t_calcd + 1
                  else
@@ -375,7 +375,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
                  end if
               else
                  print *, "ERROR"
-                 stop
+                 !stop
               end if
            end if
 
@@ -411,7 +411,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               !print *, "HYPERBOLA!"
               normal = (/(2.0D0*(rays(bnc + 1, i, 1)))/(hyper_c**2 - hyper_a**2), &
                    (2.0D0*(rays(bnc + 1, i, 2)))/(hyper_c**2 - hyper_a**2), &
-                   (-2.0D0*(rays(bnc + 1, i, 3) + hyper_pos(3)))/(hyper_a**2)/)
+                   (-2.0D0*rays(bnc + 1, i, 3) + 2.0D0*hyper_pos(3))/(hyper_a**2)/)
               normal = normal/(sqrt(dot_product(normal, normal)))
               !normal(3) = -abs(normal(3))
               !normal = -normal
@@ -434,7 +434,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               !dir(i, :) = dir(i, :) - 2.0D0*normal*cos(acos(dot_product(dir(i, :), normal)))
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
               if (rays(bnc + 1, i, 2) == 0.0) then
-                 call debug_plot(normal, rays, numrays, hax, dir)
+                 call debug_plot(normal, rays, numrays, hax, dir(i, :))
                  print *, "len", sqrt(dot_product(dir(i, :), dir(i, :)))
                  print *, "DEBUG"
               end if
@@ -525,7 +525,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 
   call plcol0(15)
   call plenv(-0.6, 0.6, -0.6, 0.6, just, axis)
-  call pllab("X Axis", "Y Axis", "View from Z axis. #[0x212b]")
+  call pllab("X Axis", "Y Axis", "View from Z Axis")
 
   call plcol0(1)
   do i = 1, numrays
@@ -546,7 +546,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
   call plenv(-0.3, 3.2, -0.6, 0.6, just, axis)
-  call pllab("Z Axis", "Y Axis", "View from X axis. #[0x212b]")
+  call pllab("Z Axis", "Y Axis", "View from X Axis")
   do i = 1, numrays
      if (rays(1, i, 1) == 0.0) then
         do j = 1, mask_ct(i) - 1
@@ -599,7 +599,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
   call plenv(-0.3, 3.2, -0.6, 0.6, just, axis)
-  call pllab("Z Axis", "X Axis", "View from Y axis. #[0x212b]")
+  call pllab("Z Axis", "X Axis", "View from Y Axis")
   do i = 1, numrays
      if (rays(1, i, 2) <= 0.01 .and. rays(1, i, 2) >= -0.01) then
         !print *, mask_ct(i)
@@ -641,7 +641,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 !      print *, yy(i)
 !   end do
 
-
+  !#[0x212b]
   !call plpoin(x(:),y(:),2)
   call plcol0(1)
   call plline(x, y)
@@ -655,29 +655,30 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-2.0, 2.0, -2.0, 2.0, just, axis)
-  call pllab("X Axis", "Y Axis", "View from detector. #[0x212b]")
+  call plenv(0.03487, 0.03498, -0.00005, 0.00005, just, axis)
+  !call plenv(-0.06, 0.06, -0.06, 0.06, just, axis)
+  !call plenv(-0.001, 0.001, -0.001, 0.001, just, axis)
+  call pllab("X Axis", "Y Axis", "View from Detector")
   !call plssym(0.0, 1.0)
   !call plpoin(rays(1,:,1), rays(1,:,2), 95)!95
   do i = 1, numrays
-     if (rays(mask_ct(i), i, 3) >= 2.5) then
-        call plpoin(rays(mask_ct(i), :, 1), rays(mask_ct(i), :, 2), 95)
-!         print *, rays(1, i, 1)
-!         print *, rays(1, i, 2)
-!         print *, rays(1, i, 3)
-!         print *, numrays
+     !if (rays(mask_ct(i), i, 3) <= 0.01) then
+     call plpoin((/100*rays(mask_ct(i), i, 1)/), (/100*rays(mask_ct(i), i, 2)/), 95)
 
-        print *, rays(mask_ct(i), i, 1)
-        print *, rays(mask_ct(i), i, 2)
-        print *, rays(mask_ct(i), i, 3)
-     else
+     print *, rays(mask_ct(i), i, 1)
+     print *, rays(mask_ct(i), i, 2)
+     print *, rays(mask_ct(i), i, 3)
+     !else
         !pass
-     end if
+     !end if
 !      if (rays(4, i, 3) <= -0.05) then
 !         call plpoin(rays(4,:,1), rays(4,:,2), 95)
 !      end if
      !call plpoin(rays(4,:,1), rays(4,:,2), 95)
   end do
+  call plpoin(rays(maxval(mask_ct), :, 1), rays(maxval(mask_ct), :, 2), 1)
+  !call plpoin((/3.49469415702413216E-002/), (/1.25695793091219754E-005/), 3)
+
   !print *, rays(4,:,1)
   !print *, rays(4,:,2)
   !Good news, everyone!
@@ -751,7 +752,7 @@ subroutine debug_plot(normal, rays, numrays, indir, outdir)
   zero(:) = (/0.0, 0.0/)
   call plline((/zero(1), normal(1)/), (/zero(2), -normal(3)/))
   call plcol0(3)
-  call plline((/zero(1), indir(1)/), (/zero(2), indir(3)/))
+  call plline((/zero(1), -indir(1)/), (/zero(2), indir(3)/))
   call plcol0(2)
   call plline((/zero(1), outdir(1)/), (/zero(2), -outdir(3)/))
   print *, "outdir 1: ", outdir(1), "outdir 2: ", outdir(3)
