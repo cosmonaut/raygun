@@ -1,13 +1,13 @@
 <raytrace>
 <name>test</name>
-<lowerbound>-10 -10 -10</lowerbound>
-<upperbound>10 10 10</upperbound>
-<numrays>3000</numrays>
-<beamrot>0.0 0.1</beamrot>
+<lowerbound>-2 -2 -2</lowerbound>
+<upperbound>2 2 4</upperbound>
+<numrays>20000</numrays>
+<beamrot>0.0 0.0</beamrot>
 <beamradius>0.5</beamradius>
 <beamcenter>0.0 0.0 3.0</beamcenter>
-<!-- beamstyle: 0 = grid 1 = radial 2 = random -->
-<beamstyle>0</beamstyle>
+<!-- beamstyle: 0 = grid 1 = random -->
+<beamstyle>1</beamstyle>
 <numoptics>3</numoptics>
 <!-- (x**2 + y**2)/4a -->
 <par_pos>0.0 0.0 0.0</par_pos>
@@ -18,14 +18,4 @@
 <hyper_rad>6.74524025385312836E-002</hyper_rad>
 <hyper_a>1.1457070964337681</hyper_a>
 <hyper_c>1.55</hyper_c>
-
-<!--<optics>
-  <optic1>
-    <type></type>
-    <position></position>
-    <parameters></parameters>
-    <diameter></diameter>
-  </optic1>
-</optics>
-</raytrace> -->
-
+</raytrace>

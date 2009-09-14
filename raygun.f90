@@ -4,7 +4,7 @@ program raygun
 
   implicit none
 
-!   interface
+  interface
 !      subroutine init_optix()
        
 !      end subroutine init_optix
@@ -12,7 +12,20 @@ program raygun
 !      subroutine fire_lazors()
 
 !      end subroutine fire_lazors
-!   end interface
+
+     subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
+       use plplot, PI => PL_PI
+       
+       integer, intent(IN)                                  :: numrays
+       integer, dimension(numrays), intent(IN)              :: mask_ct
+       double precision, dimension(2), intent(IN)                    :: beamrot
+       real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
+       character(len=40), intent(IN)                        :: name  
+       double precision, dimension(:, :), allocatable       :: points
+       integer                                              :: just, axis, n = 1, good
+       double precision :: converted = 0.0
+     end subroutine plot_spot
+  end interface
 
   double precision, parameter     :: pi = 3.1415926535897932
 
@@ -47,9 +60,6 @@ program raygun
   allocate(mask_ct(numrays))
   mask_ct = 1
 
-  print *, "a: ", hyper_a
-  print *, "hyper radius: ", hyper_rad
-
   !CHARGIN MAH LAZOR
   call init_rays()
 
@@ -58,7 +68,8 @@ program raygun
        par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
-    
+
+  call plot_spot(rays, numrays, mask_ct, name, beamrot)
   stop
 
 contains
@@ -146,9 +157,24 @@ contains
        rayct = rayct - 1
        print *, "ACTUAL RAYS: ", rayct !actual rays.
 
+    else if (beamstyle .eq. 1) then
+       !RANDOM
+       call init_random_seed()
+       do i = 1, numrays
+          call random_number(rays(1, i, 2))
+          rays(1, i, 2) = rays(1, i, 2) - 0.5D0
+          call random_number(rays(1, i, 1))
+          rays(1, i, 1) = (rays(1, i, 1) - 0.5)*(abs(sqrt(beamradius**2 - rays(1, i, 2)**2))/0.5)
+
+       end do
+       rays(1, :, 3) = 0.0D0
+       
+    else
+       print *, "ERROR, BEAMSTYLE INCORRECT"
+       stop
     end if
 
-    print *, "ZEROS: ", count(count(rays(1, :, :) .eq. 0, 2) .eq. 3) !lol?
+    print *, "ZEROS: ", count(count(rays(1, :, :) .eq. 0.0, 2) .eq. 3) !lol?
     
     do i = 1, numrays
        rays(1, i, :) = matmul(rotx, rays(1, i, :))
@@ -179,6 +205,7 @@ logical function check_bounds(point, lobound, hibound) result(answer)
         answer = .true.
      else
         answer = .false.
+        print *, "POINT: ", point(:)
         print *, "ERROR, point out of bounds"
         stop
      end if
@@ -205,7 +232,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
   double precision                :: det_a, det_b, det_c
   double precision                :: p_bsquare, s_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
-  double precision, dimension(3) :: hax
+  logical                         :: switch
+  !double precision, dimension(3) :: hax
 
   t_pos = 0.0
   mask = .false.
@@ -213,7 +241,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
   do
      do i = 1, numrays
-     !do i = 50, 51
         if (mask(i) .eqv. .false.) then
            !note rederive this to include parabola location
            prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4.0D0*par_a)
@@ -283,7 +310,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
                    .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then    
-                 !print *, "GOOD T", t_pos(1, t_calcd)
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -294,7 +320,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
                    .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then
-                 !print *, "GOOD T", t_pos(1, t_calcd)
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -365,9 +390,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               if (d_bsquare >= 0.0) then
                  t_pos(:, t_calcd) = (/ -det_c/det_b, 3.0/)
                  t_arr = dir(i, :)*t_pos(1, t_calcd)
-                 print *, "det tarr: ", t_arr
+                 !print *, "det tarr: ", t_arr
                  if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.5 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.5) then
-                    !print *, "DETECTOR T", t_pos(1, t_calcd)
                     t_calcd = t_calcd + 1
                  else
                     t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -379,14 +403,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               end if
            end if
 
-           !print *, minval(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
-           !print *, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.0)
-
            t_arr = dir(i, :) * minval(t_pos(1, :), 1, t_pos(1, :) > 0.1)
            rays(bnc + 1, i, :) = rays(bnc, i, :) + t_arr
-
-!            print *, "RAYS: ", rays(bnc, i, :)
-!            print *, "ADVANCE RAYS: ", rays(bnc + 1, i, :)
 
            !Essential Logic
            if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 1.0) then
@@ -396,7 +414,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
               normal = normal/(sqrt(dot_product(normal, normal)))
               
               if (dir(i, 3) > 0.0) then
-                 print *, "PARA MASK"
                  mask(i) = .true.
                  mask_ct(i) = bnc + 1
               else
@@ -408,74 +425,49 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 2.0) then
               !hyperboloid normal
-              !print *, "HYPERBOLA!"
               normal = (/(2.0D0*(rays(bnc + 1, i, 1)))/(hyper_c**2 - hyper_a**2), &
                    (2.0D0*(rays(bnc + 1, i, 2)))/(hyper_c**2 - hyper_a**2), &
                    (-2.0D0*rays(bnc + 1, i, 3) + 2.0D0*hyper_pos(3))/(hyper_a**2)/)
               normal = normal/(sqrt(dot_product(normal, normal)))
-              !normal(3) = -abs(normal(3))
-              !normal = -normal
-              !call debug_plot(normal)
-              print *, "HYPER NORMAL ", normal
 
-              print *, "Position before hyper if: ", rays(bnc, i, :)
-              print *, "Position on hyper: ", rays(bnc + 1, i, :)
               if (dir(i, 3) < 0.0) then
-                 print *, "HYPER MASK"
                  mask(i) = .true.
                  mask_ct(i) = bnc + 1
               else
                  mask_ct(i) = bnc + 1
               end if
 
-              print *, "Incoming hyp dir: ", dir(i, :)
-              hax(:) = dir(i, :)
+              !hax(:) = dir(i, :)
               dir(i, :) = (dir(i, :) - 2*normal*dot_product(dir(i, :), normal))
-              !dir(i, :) = dir(i, :) - 2.0D0*normal*cos(acos(dot_product(dir(i, :), normal)))
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
-              if (rays(bnc + 1, i, 2) == 0.0) then
-                 call debug_plot(normal, rays, numrays, hax, dir(i, :))
-                 print *, "len", sqrt(dot_product(dir(i, :), dir(i, :)))
-                 print *, "DEBUG"
-              end if
-              print *, "hyper bounce dir: ", dir(i, :)
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :)  > 0.01)) == 3.0) then
-              !print *, "DETECTOR"
-              !no normal.
-              print *, "DETECTOR MASK!"
-              print *, rays(bnc + 1, i, 3)
-              print *, rays(bnc + 1, i, 2)
-              print *, rays(bnc + 1, i, 1)
+
               mask(i) = .true.
               mask_ct(i) = bnc + 1
               
            else
-              print *, "EPIC ERROR, NO T"
+              !print *, "EPIC ERROR, NO T"
+              mask(i) = .true.
+              mask_ct(i) = bnc + 1
            end if
            
            t_calcd = 1
            t_pos = 0.0
-           print *, "POSITION SHOULD BE! ", rays(bnc + 1, i, :)
+
+           switch = .false.
         end if
      end do
      print *, "bounce", bnc
      bnc = bnc + 1
-     if (bnc == 5) then
+     if (switch .eqv. .true.) then
        exit
      end if
+     switch = .true.
      !exit
   end do
-  print *, mask
+  !print *, mask
 
-  !call debug_plot(normal, rays, numrays)
-
-!   do i = 1, numrays
-!      print *, "X: ", rays(4, i, 1)
-!      print *, "Y: ", rays(4, i, 2)
-!      print *, "Z: ", rays(4, i, 3)
-!   end do
-  
 end subroutine fire_lazors
 
 !valgrind hates you.
@@ -525,33 +517,23 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 
   call plcol0(15)
   call plenv(-0.6, 0.6, -0.6, 0.6, just, axis)
-  call pllab("X Axis", "Y Axis", "View from Z Axis")
+  call pllab("X Axis (Meters)", "Y Axis (Meters)", "View from Z Axis")
 
   call plcol0(1)
   do i = 1, numrays
-     !if (rays(1, i, 1) == 0.0) then
      do j = 1, mask_ct(i) - 1
         call plline(rays(j:j+1,i,1), rays(j:j+1,i,2))
-        !call plline(rays(2:3,i,3), rays(2:3,i,2))
      end do
-     !else
-        !nada
-     !end if
   end do
-
-  !call plwid(0)
-  !call plline(rays(:,1,1), rays(:,1,2))
-  !call plline(x, y)
 
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
   call plenv(-0.3, 3.2, -0.6, 0.6, just, axis)
-  call pllab("Z Axis", "Y Axis", "View from X Axis")
+  call pllab("Z Axis (Meters)", "Y Axis (Meters)", "View from X Axis")
   do i = 1, numrays
-     if (rays(1, i, 1) == 0.0) then
+     if (abs(rays(1, i, 1)) <= 0.01) then
         do j = 1, mask_ct(i) - 1
            call plline(rays(j:j+1,i,3), rays(j:j+1,i,2))
-           !call plline(rays(2:3,i,3), rays(2:3,i,2))
         end do
      else
         !nada
@@ -593,15 +575,12 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   yy = -yy
   call plline(xx, yy)
 
-
-
-
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
   call plenv(-0.3, 3.2, -0.6, 0.6, just, axis)
-  call pllab("Z Axis", "X Axis", "View from Y Axis")
+  call pllab("Z Axis (Meters)", "X Axis (Meters)", "View from Y Axis")
   do i = 1, numrays
-     if (rays(1, i, 2) <= 0.01 .and. rays(1, i, 2) >= -0.01) then
+     if (abs(rays(1, i, 2)) <= 0.01) then
         !print *, mask_ct(i)
         do j = 1, mask_ct(i) - 1
            call plline(rays(j:j+1,i,3), rays(j:j+1,i,1))
@@ -614,38 +593,9 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
      end if
   end do
 
-!   step = 1.0/16000.0
-!   !print *, "STEP: ", step
-!   x = 0.0
-!   x(1) = 2.59570709643376
-!   do i = 1, 40
-!      !print *, step
-!      if (i == 1) then
-!         !nada
-!      else
-!         x(i) = x(i - 1) + step
-!      end if
-!      y(i) = sqrt((((x(i)-1.45)**2)/(1.1457070964337**2) - 1)*(1.55**2 - 1.1457070964337**2))
-!      print *, y(i)
-!   end do
-
-!   step_par = 1.0/1900.0
-!   xx = 0.0
-!   do i = 1, 40
-!      if (i == 1) then
-!         !non
-!      else
-!         xx(i) = xx(i - 1) + step_par
-!      end if
-!      yy(i) = sqrt(12.0*xx(i))
-!      print *, yy(i)
-!   end do
-
   !#[0x212b]
-  !call plpoin(x(:),y(:),2)
   call plcol0(1)
   call plline(x, y)
-  !print *, x
   y = -y
   call plline(x, y)
 
@@ -659,104 +609,92 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   !call plenv(-0.06, 0.06, -0.06, 0.06, just, axis)
   !call plenv(-0.001, 0.001, -0.001, 0.001, just, axis)
   call pllab("X Axis", "Y Axis", "View from Detector")
-  !call plssym(0.0, 1.0)
-  !call plpoin(rays(1,:,1), rays(1,:,2), 95)!95
   do i = 1, numrays
      !if (rays(mask_ct(i), i, 3) <= 0.01) then
-     call plpoin((/100*rays(mask_ct(i), i, 1)/), (/100*rays(mask_ct(i), i, 2)/), 95)
+     call plpoin((/rays(mask_ct(i), i, 1)/), (/rays(mask_ct(i), i, 2)/), 95)
 
-     print *, rays(mask_ct(i), i, 1)
-     print *, rays(mask_ct(i), i, 2)
-     print *, rays(mask_ct(i), i, 3)
-     !else
-        !pass
-     !end if
-!      if (rays(4, i, 3) <= -0.05) then
-!         call plpoin(rays(4,:,1), rays(4,:,2), 95)
-!      end if
-     !call plpoin(rays(4,:,1), rays(4,:,2), 95)
   end do
-  call plpoin(rays(maxval(mask_ct), :, 1), rays(maxval(mask_ct), :, 2), 1)
-  !call plpoin((/3.49469415702413216E-002/), (/1.25695793091219754E-005/), 3)
+  !call plpoin(rays(maxval(mask_ct), :, 1), rays(maxval(mask_ct), :, 2), 1)
 
-  !print *, rays(4,:,1)
-  !print *, rays(4,:,2)
-  !Good news, everyone!
+  print *, "Plotted"
   call plend()
 
 end subroutine plot_that_action
 !kthxbai
 
-subroutine debug_plot(normal, rays, numrays, indir, outdir)
+subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
   use plplot, PI => PL_PI
 
-  integer, intent(IN) :: numrays
-  double precision, dimension(3), intent(IN)             :: normal, indir, outdir
+  integer, intent(IN)                                  :: numrays
+  integer, dimension(numrays), intent(IN)              :: mask_ct
+  double precision, dimension(2), intent(IN)                    :: beamrot
   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
-  real(plflt), dimension(2) :: zero
-  integer :: just, axis
- !  integer, intent(IN)                                  :: numrays
-!   integer, dimension(3), intent (IN)                   :: lobound, hibound
-!   integer, dimension(numrays), intent(IN)                  :: mask_ct
-!   character(len=40), intent(IN)                        :: name
-!   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
-!   real(plflt), dimension(1:2)                          :: x, y
-!   real(plflt)                                          :: xmin, xmax, ymin, ymax, zmin, zmax
-!   integer                                              :: just, axis
+  character(len=40), intent(IN)                        :: name  
+  double precision, dimension(:, :), allocatable       :: points
+  integer                                              :: just, axis, n = 1, good
+  double precision                                     :: converted = 0.0
+  character(len=10)                                    :: display
 
-!   xmin = lobound(1)
-!   ymin = lobound(2)
-!   xmax = hibound(1)
-!   ymax = hibound(2)
-!   zmin = lobound(3)
-!   zmax = hibound(3)
-
-!   just = 1
-!   axis = 0
-
-!   x(1) = 0
-!   x(2) = 5
-!   y(1) = 0
-!   y(2) = 5
-
-!   print *, "PLOTTING..."
-  !We will always use Z as the optical axis.
-
-  !note to self #[0x212b] is the plplot escape seq for angstrom.
   just = 1
   axis = 0
-
 
   !I need black, damnit.
   call plscol0(15, 0, 0, 0)
 
   !name file, set plot device.  pdfcairo seems to give the best
   !bounding box. LaTeX loves it. I would take pdfcairo to prom.
-  call plsfnam("debug" // ".pdf")
+  call plsfnam(trim(name) // "spot" // ".pdf")
   call plsdev("pdfcairo")
 
   call plscolbg(255, 255, 255)
   call plinit()
   call plfont(2)
-  !call plfontld(1)
+  
+  print *, count(mask_ct(:) .eq. maxval(mask_ct))
+  good = count(mask_ct(:) .eq. maxval(mask_ct))
+
+  allocate(points(count(mask_ct(:) .eq. maxval(mask_ct)), 2))
+  !print *, size(points)
+  do i = 1, numrays
+     if (mask_ct(i) == maxval(mask_ct(:))) then
+        points(n, :) = (/rays(maxval(mask_ct), i, 1), rays(maxval(mask_ct), i, 2)/)
+        n = n + 1
+     else
+        !wat
+     end if
+  end do
+  n = n - 1
 
   call plcol0(15)
-  call plenv(-0.1, 0.1, -0.1, 0.1, just, axis)
-  !call plenv(-1.0, 1.0, -1.0, 1.0, just, axis)
-  call pllab("X Axis", "Y Axis", "View from Z axis. #[0x212b]")
+  call plenv(minval(points(:, 1)), maxval(points(:, 1)), &
+      minval(points(:, 2)), maxval(points(:, 2)), just, axis)
 
-  call plcol0(1)
-  !call plline(x, y)
+  converted = beamrot(2)*3600.0
+  write (display, '(I4)') int(converted)
 
-  !call plpoin(rays(1, :, 1), rays(1, :, 2), 95)  
-  zero(:) = (/0.0, 0.0/)
-  call plline((/zero(1), normal(1)/), (/zero(2), -normal(3)/))
-  call plcol0(3)
-  call plline((/zero(1), -indir(1)/), (/zero(2), indir(3)/))
-  call plcol0(2)
-  call plline((/zero(1), outdir(1)/), (/zero(2), -outdir(3)/))
-  print *, "outdir 1: ", outdir(1), "outdir 2: ", outdir(3)
+  call pllab("X Axis (Meters)", "Y Axis (Meters)", "View from Detector at" // trim(display) &
+       // " Arcseconds Off Axis")
+  call plpoin(points(:, 1), points(:, 2), 95)
+  deallocate(points)
 
   call plend()
 
-end subroutine debug_plot
+end subroutine plot_spot
+
+SUBROUTINE init_random_seed()
+
+  implicit none
+
+  INTEGER                            :: i, n, clock
+  INTEGER, DIMENSION(:), ALLOCATABLE :: seed
+  
+  CALL RANDOM_SEED(size = n)
+  ALLOCATE(seed(n))
+  
+  CALL SYSTEM_CLOCK(COUNT=clock)
+  
+  seed = clock + 37 * (/ (i - 1, i = 1, n) /)
+  CALL RANDOM_SEED(PUT = seed)
+  
+  DEALLOCATE(seed)
+END SUBROUTINE init_random_seed
