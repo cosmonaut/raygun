@@ -13,18 +13,18 @@ program raygun
 
 !      end subroutine fire_lazors
 
-     subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
-       use plplot, PI => PL_PI
+!      subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
+!        use plplot, PI => PL_PI
        
-       integer, intent(IN)                                  :: numrays
-       integer, dimension(numrays), intent(IN)              :: mask_ct
-       double precision, dimension(2), intent(IN)                    :: beamrot
-       real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
-       character(len=40), intent(IN)                        :: name  
-       double precision, dimension(:, :), allocatable       :: points
-       integer                                              :: just, axis, n = 1, good
-       double precision :: converted = 0.0
-     end subroutine plot_spot
+!        integer, intent(IN)                                  :: numrays
+!        integer, dimension(numrays), intent(IN)              :: mask_ct
+!        double precision, dimension(2), intent(IN)                    :: beamrot
+!        real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
+!        character(len=40), intent(IN)                        :: name  
+!        double precision, dimension(:, :), allocatable       :: points
+!        integer                                              :: just, axis, n = 1, good
+!        double precision :: converted = 0.0
+!      end subroutine plot_spot
   end interface
 
   double precision, parameter     :: pi = 3.1415926535897932
@@ -32,7 +32,7 @@ program raygun
   integer                                           :: argc
   character(len=100)                                :: file
   double precision, dimension(:, :, :), allocatable :: rays
-  integer, dimension(:), allocatable                :: mask_ct  
+  integer, dimension(:), allocatable                :: mask_ct , wavel
   double precision, dimension(:, :), allocatable    :: dir!, wavel
 
 
@@ -60,16 +60,22 @@ program raygun
   allocate(mask_ct(numrays))
   mask_ct = 1
 
+  allocate(wavel(numrays))
+  wavel = 0.0
+
   !CHARGIN MAH LAZOR
   call init_rays()
 
-  !call init_optix()
   call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
        par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 
   call plot_spot(rays, numrays, mask_ct, name, beamrot)
+
+  deallocate(rays)
+  deallocate(dir)
+  deallocate(mask_ct)
   stop
 
 contains
@@ -180,9 +186,6 @@ contains
        rays(1, i, :) = matmul(rotx, rays(1, i, :))
        rays(1, i, :) = matmul(roty, rays(1, i, :))
        rays(1, i, :) = beamcenter + rays(1, i, :)
-    end do
-
-    do i = 1, numrays
        dir(i, :) = matmul(roty, dir(i, :))
        dir(i, :) = matmul(rotx, dir(i, :))
     end do
@@ -201,7 +204,6 @@ logical function check_bounds(point, lobound, hibound) result(answer)
 
   do i=1, 3
      if (point(i) <= hibound(i) .and. point(i) >= lobound(i)) then
-
         answer = .true.
      else
         answer = .false.
@@ -210,6 +212,7 @@ logical function check_bounds(point, lobound, hibound) result(answer)
         stop
      end if
   end do
+
 end function check_bounds
 
 subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
@@ -233,7 +236,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
   double precision                :: p_bsquare, s_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
-  !double precision, dimension(3) :: hax
+
 
   t_pos = 0.0
   mask = .false.
@@ -610,18 +613,16 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
   !call plenv(-0.001, 0.001, -0.001, 0.001, just, axis)
   call pllab("X Axis", "Y Axis", "View from Detector")
   do i = 1, numrays
-     !if (rays(mask_ct(i), i, 3) <= 0.01) then
      call plpoin((/rays(mask_ct(i), i, 1)/), (/rays(mask_ct(i), i, 2)/), 95)
 
   end do
-  !call plpoin(rays(maxval(mask_ct), :, 1), rays(maxval(mask_ct), :, 2), 1)
 
   print *, "Plotted"
   call plend()
 
 end subroutine plot_that_action
-!kthxbai
 
+!valgrind also hates you
 subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
   use plplot, PI => PL_PI
 
@@ -675,9 +676,10 @@ subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
   call pllab("X Axis (Meters)", "Y Axis (Meters)", "View from Detector at" // trim(display) &
        // " Arcseconds Off Axis")
   call plpoin(points(:, 1), points(:, 2), 95)
-  deallocate(points)
 
   call plend()
+  
+  deallocate(points)
 
 end subroutine plot_spot
 
@@ -698,3 +700,4 @@ SUBROUTINE init_random_seed()
   
   DEALLOCATE(seed)
 END SUBROUTINE init_random_seed
+!kthxbai
