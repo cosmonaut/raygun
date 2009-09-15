@@ -71,7 +71,7 @@ program raygun
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 
-  call plot_spot(rays, numrays, mask_ct, name, beamrot)
+  call plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
 
   deallocate(rays)
   deallocate(dir)
@@ -188,6 +188,16 @@ contains
        rays(1, i, :) = beamcenter + rays(1, i, :)
        dir(i, :) = matmul(roty, dir(i, :))
        dir(i, :) = matmul(rotx, dir(i, :))
+
+       if (rays(1, i, 1) >= 0 .and. rays(1, i, 2) >= 0) then
+          wavel(i) = 7500.0
+       else if (rays(1, i, 1) >= 0 .and. rays(1, i, 2) < 0) then
+          wavel(i) = 5900.0
+       else if (rays(1, i, 1) < 0 .and. rays(1, i, 2) < 0) then
+          wavel(i) = 5700.0
+       else
+          wavel(i) = 4950.0
+       end if
     end do
 
   end subroutine init_rays
@@ -520,13 +530,14 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 
   call plcol0(15)
   call plenv(-0.6, 0.6, -0.6, 0.6, just, axis)
-  call pllab("X Axis (Meters)", "Y Axis (Meters)", "View from Z Axis")
+  call pllab("X Axis (Meters)", "Y Axis (Meters)", "View of Initial Beam from Z axis")
 
   call plcol0(1)
   do i = 1, numrays
-     do j = 1, mask_ct(i) - 1
-        call plline(rays(j:j+1,i,1), rays(j:j+1,i,2))
-     end do
+     call plpoin((/rays(1, i, 1)/), (/rays(1, i, 2)/), 95)
+     !do j = 1, mask_ct(i) - 1
+        !call plline(rays(j:j+1,i,1), rays(j:j+1,i,2))
+     !end do
   end do
 
   call plcol0(15)
@@ -623,19 +634,22 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct)
 end subroutine plot_that_action
 
 !valgrind also hates you
-subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
+subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
   use plplot, PI => PL_PI
 
   integer, intent(IN)                                  :: numrays
-  integer, dimension(numrays), intent(IN)              :: mask_ct
-  double precision, dimension(2), intent(IN)                    :: beamrot
+  integer, dimension(numrays), intent(IN)              :: mask_ct, wavel
+  double precision, dimension(2), intent(IN)           :: beamrot
   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
   character(len=40), intent(IN)                        :: name  
   double precision, dimension(:, :), allocatable       :: points
+  integer, dimension(:), allocatable                   :: color
   integer                                              :: just, axis, n = 1, good
   double precision                                     :: converted = 0.0
   character(len=10)                                    :: display
 
+  print *, "Plotting Spot..."
+  
   just = 1
   axis = 0
 
@@ -654,17 +668,30 @@ subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
   print *, count(mask_ct(:) .eq. maxval(mask_ct))
   good = count(mask_ct(:) .eq. maxval(mask_ct))
 
-  allocate(points(count(mask_ct(:) .eq. maxval(mask_ct)), 2))
+  allocate(points(good, 2))
+  allocate(color(good))
   !print *, size(points)
   do i = 1, numrays
      if (mask_ct(i) == maxval(mask_ct(:))) then
         points(n, :) = (/rays(maxval(mask_ct), i, 1), rays(maxval(mask_ct), i, 2)/)
+
+        if (wavel(i) == 7500.0) then
+           color(n) = 1
+        else if (wavel(i) == 5900.0) then
+           color(n) = 2
+        else if (wavel(i) == 5700.0) then
+           color(n) = 3
+        else if (wavel(i) == 4950.0) then
+           color(n) = 9
+        else
+           !wat?
+        end if
         n = n + 1
      else
         !wat
      end if
   end do
-  n = n - 1
+  !n = n - 1
 
   call plcol0(15)
   call plenv(minval(points(:, 1)), maxval(points(:, 1)), &
@@ -675,8 +702,14 @@ subroutine plot_spot(rays, numrays, mask_ct, name, beamrot)
 
   call pllab("X Axis (Meters)", "Y Axis (Meters)", "View from Detector at" // trim(display) &
        // " Arcseconds Off Axis")
-  call plpoin(points(:, 1), points(:, 2), 95)
 
+  do i = 1, good
+     call plcol0(color(i))
+     !call plpoin(points(:, 1), points(:, 2), 95)
+     call plpoin((/points(i, 1)/), (/points(i, 2)/), 95)
+     
+  end do
+  print *, "Plotted Spot."
   call plend()
   
   deallocate(points)
