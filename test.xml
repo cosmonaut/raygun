@@ -2,12 +2,13 @@
 <name>test</name>
 <lowerbound>-2 -2 -2</lowerbound>
 <upperbound>2 2 4</upperbound>
-<numrays>20000</numrays>
-<beamrot>0.0 0.003</beamrot>
+<numrays>1000</numrays>
+<!-- y, x (yeah, yeah, I know...) -->
+<beamrot>0.0 0.0</beamrot>
 <beamradius>0.5</beamradius>
 <beamcenter>0.0 0.0 3.0</beamcenter>
 <!-- beamstyle: 0 = grid 1 = random -->
-<beamstyle>1</beamstyle>
+<beamstyle>0</beamstyle>
 <numoptics>3</numoptics>
 <!-- (x**2 + y**2)/4a -->
 <par_pos>0.0 0.0 0.0</par_pos>
