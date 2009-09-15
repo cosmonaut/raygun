@@ -405,7 +405,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
                  t_pos(:, t_calcd) = (/ -det_c/det_b, 3.0/)
                  t_arr = dir(i, :)*t_pos(1, t_calcd)
                  !print *, "det tarr: ", t_arr
-                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.05 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.05) then
+                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.4 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.4) then
                     t_calcd = t_calcd + 1
                  else
                     t_pos(:, t_calcd) = (/0.0, 0.0/)
@@ -443,7 +443,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
                    (2.0D0*(rays(bnc + 1, i, 2)))/(hyper_c**2 - hyper_a**2), &
                    (-2.0D0*rays(bnc + 1, i, 3) + 2.0D0*hyper_pos(3))/(hyper_a**2)/)
               normal = normal/(sqrt(dot_product(normal, normal)))
-
+              normal(3) = -abs(normal(3))
               if (dir(i, 3) < 0.0) then
                  mask(i) = .true.
                  mask_ct(i) = bnc + 1
@@ -483,6 +483,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
   !print *, mask
 
 end subroutine fire_lazors
+
 
 !valgrind hates you.
 subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wavel, beamrot)
@@ -560,7 +561,6 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   end do
 
 
-
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
   call plenv(-0.3, 3.2, -0.6, 0.6, just, axis)
@@ -589,7 +589,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   end do
 
   step_par = 1.0/1900.0
-  xx = (0.067**2)/(4*1.1457)
+  xx = (0.045**2)/(4*1.14570709)
   do i = 1, 40
      if (i == 1) then
         !non
@@ -636,19 +636,6 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   call plline(xx, yy)
 
 
-  ! call plcol0(15)
-  ! !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  ! call plenv(0.03487, 0.03498, -0.00005, 0.00005, just, axis)
-  ! !call plenv(-0.06, 0.06, -0.06, 0.06, just, axis)
-  ! !call plenv(-0.001, 0.001, -0.001, 0.001, just, axis)
-  ! call pllab("X Axis", "Y Axis", "View from Detector")
-  ! do i = 1, numrays
-  !    call plpoin((/rays(mask_ct(i), i, 1)/), (/rays(mask_ct(i), i, 2)/), 95)
-  ! end do
-
-  ! print *, "Plotted"
-
-
   good = count(mask_ct(:) .eq. maxval(mask_ct))
 
   allocate(points(good, 2))
@@ -689,22 +676,20 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   converted = beamrot(2)*3600.0
   write (display, '(I4)') int(converted)
 
-  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "Detector:" //trim(display) &
+  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "Detector View:" //trim(display) &
        // " Arcseconds Off Axis")
 
   do i = 1, good
      call plcol0(color(i))
-     !call plpoin(points(:, 1), points(:, 2), 95)
      call plpoin((/points(i, 1)*1.0e6/), (/points(i, 2)*1.0e6/), 95)
-     
   end do
 
-
-
+  print *, "Plotted"
 
   call plend()
 
 end subroutine plot_that_action
+
 
 !valgrind also hates you
 subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
@@ -746,7 +731,7 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
 
   allocate(points(good, 2))
   allocate(color(good))
-  !print *, size(points)
+
   do i = 1, numrays
      if (mask_ct(i) == maxval(mask_ct(:))) then
         points(n, :) = (/rays(maxval(mask_ct), i, 1), rays(maxval(mask_ct), i, 2)/)
@@ -760,11 +745,11 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
         else if (wavel(i) == 4950.0) then
            color(n) = 9
         else
-           !wat?
+           !what?
         end if
         n = n + 1
      else
-        !wat
+        !do not want
      end if
   end do
 
@@ -782,21 +767,45 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
   converted = beamrot(2)*3600.0
   write (display, '(I4)') int(converted)
 
-  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "View from Detector at" // trim(display) &
+  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "View from Detector" &
+       // trim(display) &
+       !// " 3000" &
        // " Arcseconds Off Axis")
+
 
   do i = 1, good
      call plcol0(color(i))
-     !call plpoin(points(:, 1), points(:, 2), 95)
      call plpoin((/points(i, 1)*1.0e6/), (/points(i, 2)*1.0e6/), 95)
-     
   end do
+
   print *, "Plotted Spot."
   call plend()
   
   deallocate(points)
 
 end subroutine plot_spot
+
+subroutine xmlify(rays, numrays, mask_ct)
+  integer, intent(IN)                                      :: numrays
+  integer, dimension(numrays), intent(IN)                  :: mask_ct
+  double precision, dimension(100, numrays, 3), intent(IN) :: rays
+  double precision, dimension(:, :), allocatable           :: good_rays
+  integer                                                  :: n, good, n_good_rays
+
+  n_good_rays = maxval(mask_ct)
+  good = count(mask_ct(:) .eq. n)
+  
+  allocate(good_rays(n, good))
+
+  do i = 1, numrays
+     if (mask_ct(i) == n) then
+        
+     end if
+  end do
+  
+  
+
+end subroutine xmlify
 
 SUBROUTINE init_random_seed()
 
