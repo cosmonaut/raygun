@@ -74,6 +74,8 @@ program raygun
 
   call plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
 
+  !call xmlify(rays, numrays, mask_ct, name, wavel)
+
   deallocate(rays)
   deallocate(dir)
   deallocate(mask_ct)
@@ -189,6 +191,7 @@ contains
        rays(1, i, :) = beamcenter + rays(1, i, :)
        dir(i, :) = matmul(roty, dir(i, :))
        dir(i, :) = matmul(rotx, dir(i, :))
+       dir(i, :) = dir(i, :)/sqrt(dot_product(dir(i, :), dir(i, :)))
 
        if (rays(1, i, 1) >= 0 .and. rays(1, i, 2) >= 0) then
           wavel(i) = 7500.0
@@ -785,24 +788,53 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
 
 end subroutine plot_spot
 
-subroutine xmlify(rays, numrays, mask_ct)
+subroutine xmlify(rays, numrays, mask_ct, name, wavel)
   integer, intent(IN)                                      :: numrays
   integer, dimension(numrays), intent(IN)                  :: mask_ct
+  double precision, dimension(numrays), intent(IN)         :: wavel
   double precision, dimension(100, numrays, 3), intent(IN) :: rays
-  double precision, dimension(:, :), allocatable           :: good_rays
+  character(len=40), intent(IN)                            :: name
+  double precision, dimension(:, :), allocatable           :: good_rays, r, o, y, g, b, v
+  double precision, dimension(:), allocatable              :: good_wave
   integer                                                  :: n, good, n_good_rays
 
-  n_good_rays = maxval(mask_ct)
+  n = maxval(mask_ct)
   good = count(mask_ct(:) .eq. n)
   
-  allocate(good_rays(n, good))
-
-  do i = 1, numrays
-     if (mask_ct(i) == n) then
-        
-     end if
-  end do
   
+
+  !allocate(good_rays(good, 3))
+  !allocate(good_wave(good))
+
+  !open(unit = 1, file = trim(name) // "rt3d.xml")
+
+  print *, count((wavel <= 7500.0 .and. wavel > 6200.0)) !r
+  print *, count((wavel <= 6200.0 .and. wavel > 5900.0)) !o
+  print *, count((wavel <= 5900.0 .and. wavel > 5700.0)) !y
+  print *, count((wavel <= 5700.0 .and. wavel > 4950.0)) !g
+  print *, count((wavel <= 4950.0 .and. wavel > 4500.0)) !b
+  print *, count((wavel <= 4500.0 .and. wavel > 3800.0)) !v
+
+  
+
+
+
+
+
+
+  !write(1, *) "<raytrace><lines>"
+
+!   do i = 1, numrays
+!      if (mask_ct(i) == n) then
+!         good_rays(i, :) = rays(n, i, :)
+!         good_wave(i) = wavel(i)
+!      end if
+!   end do
+  
+  
+
+
+  !write(1, *) "</lines></raytrace>"
   
 
 end subroutine xmlify
