@@ -74,7 +74,7 @@ program raygun
 
   call plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
 
-  !call xmlify(rays, numrays, mask_ct, name, wavel)
+  call xmlify(rays, numrays, mask_ct, name, wavel)
 
   deallocate(rays)
   deallocate(dir)
@@ -770,8 +770,8 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
   converted = beamrot(2)*3600.0
   write (display, '(I4)') int(converted)
 
-  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "View from Detector" &
-       // trim(display) &
+  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "View from Detector " &
+       // trim(adjustl(display)) &
        !// " 3000" &
        // " Arcseconds Off Axis")
 
@@ -794,48 +794,295 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
   double precision, dimension(numrays), intent(IN)         :: wavel
   double precision, dimension(100, numrays, 3), intent(IN) :: rays
   character(len=40), intent(IN)                            :: name
-  double precision, dimension(:, :), allocatable           :: good_rays, r, o, y, g, b, v
+  double precision, dimension(:, :, :), allocatable        :: good_rays, r, o, y, g, b, v
   double precision, dimension(:), allocatable              :: good_wave
-  integer                                                  :: n, good, n_good_rays
+  integer                                                  :: n, good, n_good_rays, j, k, h
+  character(len=20) :: num, pt, xpt, ypt, zpt
 
   n = maxval(mask_ct)
-  good = count(mask_ct(:) .eq. n)
+  good = count(mask_ct .eq. n)
+
+  print *, "N: ", n
+  print *, "good: ", good
+
+  allocate(good_rays(n, good, 3))
+  allocate(good_wave(good))
+
+  j = 1
+  do i = 1, numrays
+     if (mask_ct(i) == n) then
+        do k = 1, n
+           good_rays(k, j, :) = rays(k, i, :)
+           good_wave(j) = wavel(i)
+        end do
+        j = j + 1 
+     end if
+  end do
+
+  print *, "done"
+
+  print *, count((good_wave <= 7500.0 .and. good_wave > 6200.0))
+
+  open(unit = 1, file = trim(name) // "rt3d.xml")
+
+  print *, "file open"
+
+  allocate(r(n, count((good_wave <= 7500.0 .and. good_wave > 6200.0)), 3)) !r
+  allocate(o(n, count((good_wave <= 6200.0 .and. good_wave > 5900.0)), 3)) !o
+  allocate(y(n, count((good_wave <= 5900.0 .and. good_wave > 5700.0)), 3)) !y
+  allocate(g(n, count((good_wave <= 5700.0 .and. good_wave > 4950.0)), 3)) !g
+  allocate(b(n, count((good_wave <= 4950.0 .and. good_wave > 4500.0)), 3)) !b
+  allocate(v(n, count((good_wave <= 4500.0 .and. good_wave > 3800.0)), 3)) !v
+  !print *, "hello?"
+
+  j = 1
+  do i = 1, good
+     if (good_wave(i) <= 7500.0 .and. good_wave(i) > 6200.0) then
+        do k = 1, n
+           r(k, j, :) = good_rays(k, i, :)
+        end do
+        j = j + 1
+     end if
+  end do
+
+
+  j = 1
+  do i = 1, good
+     if (good_wave(i) <= 6200.0 .and. good_wave(i) > 5900.0) then
+        do k = 1, n
+           o(k, j, :) = good_rays(k, i, :)
+        end do
+        j = j + 1
+     end if
+  end do
+
+  j = 1
+  do i = 1, good
+     if (good_wave(i) <= 5900.0 .and. good_wave(i) > 5700.0) then
+        do k = 1, n
+           y(k, j, :) = good_rays(k, i, :)
+        end do
+        j = j + 1
+     end if
+  end do
+
+  j = 1
+  do i = 1, good
+     if (good_wave(i) <= 5700.0 .and. good_wave(i) > 4950.0) then
+        do k = 1, n
+           g(k, j, :) = good_rays(k, i, :)
+        end do
+        j = j + 1
+     end if
+  end do
+
+
+  j = 1
+  do i = 1, good
+     if (good_wave(i) <= 4950.0 .and. good_wave(i) > 4500.0) then
+        do k = 1, n
+           b(k, j, :) = good_rays(k, i, :)
+        end do
+        j = j + 1
+     end if
+  end do
+
+  j = 1
+  do i = 1, good
+     if (good_wave(i) <= 4500.0 .and. good_wave(i) > 3800.0) then
+        do k = 1, n
+           v(k, j, :) = good_rays(k, i, :)
+        end do
+        j = j + 1
+     end if
+  end do
+
+
+  write(1, *) "<raytrace><lines>"
+
+  if (size(r, 2) /= 0) then  
+     write(1, *) "<rlines>"
+     do i = 1, size(r, 2)
+        write(num, *) i
+        !dummy = trim(trim(dummy))
+        write (1, *) "<line" // trim(adjustl(num)) // ">"
+        do k = 1, n
+           !print *, "POINTS!"
+           write(pt, *) k - 1
+           write (1, *) "<point" // trim(adjustl(pt)) // ">"
+           !do h = 1, 3
+           
+           write (xpt, '(F20.16)') r(k, i, 1)
+           !print *, good_rays(i, 1)
+           write (ypt, '(F20.15)') r(k, i, 2)
+           write (zpt, '(F20.15)') r(k, i, 3)
+           write (1, *) "<x>" // trim(adjustl(xpt)) // "</x>"
+           write (1, *) "<y>" // trim(adjustl(ypt)) // "</y>"
+           write (1, *) "<z>" // trim(adjustl(zpt)) // "</z>"
+           
+           !end do
+           write (1, *) "</point" // trim(adjustl(pt)) // ">"
+        end do
+        
+        write (1, *) "</line" // trim(adjustl(num)) // ">"
+     end do
+     write(1, *) "</rlines>"
+  end if
   
-  
+  if (size(o, 2) /= 0) then
+     write(1, *) "<olines>"
+     do i = 1, size(o, 2)
+        write(num, *) i
+        !dummy = trim(trim(dummy))
+        write (1, *) "<line" // trim(adjustl(num)) // ">"
+        do k = 1, n
+           !print *, "POINTS!"
+           write(pt, *) k - 1
+           write (1, *) "<point" // trim(adjustl(pt)) // ">"
+           !do h = 1, 3
+           
+           write (xpt, '(F20.16)') o(k, i, 1)
+           !print *, good_rays(i, 1)
+           write (ypt, '(F20.15)') o(k, i, 2)
+           write (zpt, '(F20.15)') o(k, i, 3)
+           write (1, *) "<x>" // trim(adjustl(xpt)) // "</x>"
+           write (1, *) "<y>" // trim(adjustl(ypt)) // "</y>"
+           write (1, *) "<z>" // trim(adjustl(zpt)) // "</z>"
+           
+           !end do
+           write (1, *) "</point" // trim(adjustl(pt)) // ">"
+        end do
+        
+        write (1, *) "</line" // trim(adjustl(num)) // ">"
+     end do
+     write(1, *) "</olines>"
+  end if
 
-  !allocate(good_rays(good, 3))
-  !allocate(good_wave(good))
+  if (size(y, 2) /= 0) then
+     write(1, *) "<ylines>"
+     do i = 1, size(y, 2)
+        write(num, *) i
+        !dummy = trim(trim(dummy))
+        write (1, *) "<line" // trim(adjustl(num)) // ">"
+        do k = 1, n
+           !print *, "POINTS!"
+           write(pt, *) k - 1
+           write (1, *) "<point" // trim(adjustl(pt)) // ">"
+           !do h = 1, 3
+           
+           write (xpt, '(F20.16)') y(k, i, 1)
+           !print *, good_rays(i, 1)
+           write (ypt, '(F20.15)') y(k, i, 2)
+           write (zpt, '(F20.15)') y(k, i, 3)
+           write (1, *) "<x>" // trim(adjustl(xpt)) // "</x>"
+           write (1, *) "<y>" // trim(adjustl(ypt)) // "</y>"
+           write (1, *) "<z>" // trim(adjustl(zpt)) // "</z>"
+           
+           !end do
+           write (1, *) "</point" // trim(adjustl(pt)) // ">"
+        end do
+        
+        write (1, *) "</line" // trim(adjustl(num)) // ">"
+     end do
+     write(1, *) "</ylines>"
+  end if
 
-  !open(unit = 1, file = trim(name) // "rt3d.xml")
+  if (size(g, 2) /= 0) then
+     write(1, *) "<glines>"
+     do i = 1, size(g, 2)
+        write(num, *) i
+        !dummy = trim(trim(dummy))
+        write (1, *) "<line" // trim(adjustl(num)) // ">"
+        do k = 1, n
+           !print *, "POINTS!"
+           write(pt, *) k - 1
+           write (1, *) "<point" // trim(adjustl(pt)) // ">"
+           !do h = 1, 3
+           
+           write (xpt, '(F20.16)') g(k, i, 1)
+           write (ypt, '(F20.15)') g(k, i, 2)
+           write (zpt, '(F20.15)') g(k, i, 3)
+           write (1, *) "<x>" // trim(adjustl(xpt)) // "</x>"
+           write (1, *) "<y>" // trim(adjustl(ypt)) // "</y>"
+           write (1, *) "<z>" // trim(adjustl(zpt)) // "</z>"
+           
+           !end do
+           write (1, *) "</point" // trim(adjustl(pt)) // ">"
+        end do
+        
+        write (1, *) "</line" // trim(adjustl(num)) // ">"
+     end do
+     write(1, *) "</glines>"
+  end if
 
-  print *, count((wavel <= 7500.0 .and. wavel > 6200.0)) !r
-  print *, count((wavel <= 6200.0 .and. wavel > 5900.0)) !o
-  print *, count((wavel <= 5900.0 .and. wavel > 5700.0)) !y
-  print *, count((wavel <= 5700.0 .and. wavel > 4950.0)) !g
-  print *, count((wavel <= 4950.0 .and. wavel > 4500.0)) !b
-  print *, count((wavel <= 4500.0 .and. wavel > 3800.0)) !v
+  if (size(b, 2) /= 0) then
+     write(1, *) "<blines>"
+     do i = 1, size(b, 2)
+        write(num, *) i
+        !dummy = trim(trim(dummy))
+        write (1, *) "<line" // trim(adjustl(num)) // ">"
+        do k = 1, n
+           !print *, "POINTS!"
+           write(pt, *) k - 1
+           write (1, *) "<point" // trim(adjustl(pt)) // ">"
+           !do h = 1, 3
+           
+           write (xpt, '(F20.16)') b(k, i, 1)
+           write (ypt, '(F20.15)') b(k, i, 2)
+           write (zpt, '(F20.15)') b(k, i, 3)
+           write (1, *) "<x>" // trim(adjustl(xpt)) // "</x>"
+           write (1, *) "<y>" // trim(adjustl(ypt)) // "</y>"
+           write (1, *) "<z>" // trim(adjustl(zpt)) // "</z>"
+           
+           !end do
+           write (1, *) "</point" // trim(adjustl(pt)) // ">"
+        end do
+        
+        write (1, *) "</line" // trim(adjustl(num)) // ">"
+     end do
+     write(1, *) "</blines>"
+  end if
 
-  
+  if (size(v, 2) /= 0) then
+     write(1, *) "<vlines>"
+     do i = 1, size(v, 2)
+        write(num, *) i
+        !dummy = trim(trim(dummy))
+        write (1, *) "<line" // trim(adjustl(num)) // ">"
+        do k = 1, n
+           !print *, "POINTS!"
+           write(pt, *) k - 1
+           write (1, *) "<point" // trim(adjustl(pt)) // ">"
+           !do h = 1, 3
+           
+           write (xpt, '(F20.16)') v(k, i, 1)
+           write (ypt, '(F20.15)') v(k, i, 2)
+           write (zpt, '(F20.15)') v(k, i, 3)
+           write (1, *) "<x>" // trim(adjustl(xpt)) // "</x>"
+           write (1, *) "<y>" // trim(adjustl(ypt)) // "</y>"
+           write (1, *) "<z>" // trim(adjustl(zpt)) // "</z>"
+           
+           !end do
+           write (1, *) "</point" // trim(adjustl(pt)) // ">"
+        end do
+        
+        write (1, *) "</line" // trim(adjustl(num)) // ">"
+     end do
+     write(1, *) "</vlines>"
+  end if
+
+  ! print *, count((wavel <= 7500.0 .and. wavel > 6200.0)) !r
+  ! print *, count((wavel <= 6200.0 .and. wavel > 5900.0)) !o
+  ! print *, count((wavel <= 5900.0 .and. wavel > 5700.0)) !y
+  ! print *, count((wavel <= 5700.0 .and. wavel > 4950.0)) !g
+  ! print *, count((wavel <= 4950.0 .and. wavel > 4500.0)) !b
+  ! print *, count((wavel <= 4500.0 .and. wavel > 3800.0)) !v
 
 
 
 
-
-
-  !write(1, *) "<raytrace><lines>"
-
-!   do i = 1, numrays
-!      if (mask_ct(i) == n) then
-!         good_rays(i, :) = rays(n, i, :)
-!         good_wave(i) = wavel(i)
-!      end if
-!   end do
-  
-  
-
-
-  !write(1, *) "</lines></raytrace>"
-  
+  write(1, *) "</lines></raytrace>"
+  close(1)
 
 end subroutine xmlify
 
