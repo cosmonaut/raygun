@@ -487,6 +487,110 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
 end subroutine fire_lazors
 
+subroutine vecray(m, d, l, n, gg, i, o)
+!subroutine vecray(m,d,l,n1,n2,n3,g1,g2,g3,i1,i2,i3,o1,o2,o3)
+
+  !implicit double precision (a-h,o-z)
+  !real*8 m,d,l,n1,n2,n3,i1,i2,i3,g1,g2,g3,o1,o2,o3
+
+  implicit none
+
+  double precision, intent(IN)                  :: m, d, l
+  double precision, dimension(3), intent(IN)    :: gg, i, n
+  double precision, dimension(3), intent(INOUT) :: o
+  double precision                              :: a, xn1, xn2, xxi1, xxi3
+  double precision, dimension(3,3)              :: r, rt
+  double precision, dimension(3)                :: xxo, g
+
+! c	m = order
+! c	d = line spacing (angstroms/line)
+! c	l = wavelength (angstroms)
+! c	N is plane normal, pointing up on side that rays hit
+! c	G is vector in direction of lines on grating
+! c	I is incident vector pointing in ray prop. direction
+! c	o is output vector pointing in ray prop. direction
+! c	x indicates primed coordinate system
+! c	xx indicates double primed coordinate system
+
+  g = gg !our copy to work with
+	
+  goto 60
+50 continue
+  ! g1 = -g1
+  ! g2 = -g2
+  ! g3 = -g3
+  g = -g
+60 continue
+  
+  a = sqrt ( 1.0 - g(3)*g(3) )
+  
+  xn1 = ( n(1)*g(2) - n(2)*g(1) )/a
+  xn2 = g(3) * ( n(1)*g(1) + n(2)*g(2) )/a - a*n(3)
+
+  !xn1 = ( n1*g2 - n2*g1 )/a
+  !xn2 = g3*( n1*g1 + n2*g2 )/a  - a*n3
+ 
+!  c	R is the transform from basic to xx coordinates
+!  c	in xx coordinates, g is in the z direction
+!  c	RT is the return transform
+
+  r(1, :) = (/ ( xn2*g(2) - xn1*g(3)*g(1) )/a, &
+       -( xn2*g(1) + xn1*g(2)*g(3) )/a, &
+       xn1*a /)
+  r(2, :) = (/ ( xn1*g(2) + xn2*g(3)*g(1) )/a, &
+       ( -xn1*g(1) + xn2*g(2)*g(3) )/a, &
+       -a*xn2 /)
+  r(3, :) = g
+
+  ! r11 = ( xn2*g2 - xn1*g3*g1 )/a
+  ! r12 = -( xn2*g1 + xn1*g2*g3 )/a
+  ! r13 = xn1*a
+  ! r21 = (xn1*g2 + xn2*g3*g1)/a
+  ! r22 = ( -xn1*g1 + xn2*g2*g3 )/a
+  ! r23 = -a*xn2
+  ! r31 = g1
+  ! r32 = g2
+  ! r33 = g3
+
+  rt = transpose(r)
+
+  ! rt11 = r11
+  ! rt12 = r21
+  ! rt13 = r31
+  ! rt21 = r12
+  ! rt22 = r22
+  ! rt23 = r32
+  ! rt31 = r13
+  ! rt32 = r23
+  ! rt33 = r33
+  
+  
+  !xxi1 = i*r11 + i2*r12 + i3*r13
+  xxi1 = dot_product(i, r(1, :))
+
+  if (xxi1.lt.0) goto 50
+
+  !xxi3 = i1*r31 + i2*r32 + i3*r33
+  xxi3 = dot_product(i, r(3, :))
+  
+  !xxo = (/ (m*l/d) + xxi1, xxi3, sqrt ( 1.0 - xxo1*xxo1 - xxo3*xxo3 ) /)
+  xxo(1) = (m*l/d) + xxi1
+  xxo(3) = xxi3
+  xxo(2) = sqrt ( 1.0 - xxo(1)*xxo(1) - xxo(3)*xxo(3) )
+
+  ! xxo1 = (m*l/d) + xxi1
+  ! xxo3 = xxi3
+  ! xxo2 = sqrt ( 1.0 - xxo1*xxo1 - xxo3*xxo3 )
+
+  ! o1 = xxo1*rt11 + xxo2*rt12 + xxo3*rt13
+  ! o2 = xxo1*rt21 + xxo2*rt22 + xxo3*rt23
+  ! o3 = xxo1*rt31 + xxo2*rt32 + xxo3*rt33
+
+  o = matmul(xxo, rt)
+
+  return
+end subroutine vecray
+
 
 !valgrind hates you.
 subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wavel, beamrot)
@@ -1070,16 +1174,6 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
      end do
      write(1, *) "</vlines>"
   end if
-
-  ! print *, count((wavel <= 7500.0 .and. wavel > 6200.0)) !r
-  ! print *, count((wavel <= 6200.0 .and. wavel > 5900.0)) !o
-  ! print *, count((wavel <= 5900.0 .and. wavel > 5700.0)) !y
-  ! print *, count((wavel <= 5700.0 .and. wavel > 4950.0)) !g
-  ! print *, count((wavel <= 4950.0 .and. wavel > 4500.0)) !b
-  ! print *, count((wavel <= 4500.0 .and. wavel > 3800.0)) !v
-
-
-
 
   write(1, *) "</lines></raytrace>"
   close(1)
