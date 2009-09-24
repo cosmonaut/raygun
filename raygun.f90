@@ -507,6 +507,9 @@ subroutine intersect(a, b, c, t, t_calcd, r, inr, pos)
 
   double precision, intent(IN) :: a, b, c, r, inr
   double precision, dimension(3), intent(IN) :: pos
+  double precision, dimension(2, 20), intent(INOUT) :: t
+  integer, intent(INOUT) :: t_calcd
+
 
 end subroutine intersect
 
