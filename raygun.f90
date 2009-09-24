@@ -501,6 +501,16 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 end subroutine fire_lazors
 
 
+subroutine intersect(a, b, c, t, t_calcd, r, inr, pos)
+
+  implicit none
+
+  double precision, intent(IN) :: a, b, c, r, inr
+  double precision, dimension(3), intent(IN) :: pos
+
+end subroutine intersect
+
+
 subroutine vecray(m, d, l, n, gg, i, o)
 !subroutine vecray(m,d,l,n1,n2,n3,g1,g2,g3,i1,i2,i3,o1,o2,o3)
 
