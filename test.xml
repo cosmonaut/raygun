@@ -21,4 +21,9 @@
 <hyper_rad>6.74524025385312836E-002</hyper_rad>
 <hyper_a>1.1457070964337681</hyper_a>
 <hyper_c>1.55</hyper_c>
+
+<grat_pos>-1.0 -1.0 -1.0</grat_pos>
+<grat_r>20.0</grat_r>
+<det_pos>-2.0 -2.0 -2.0</det_pos>
+<det_r>20.0</det_r>
 </raytrace>

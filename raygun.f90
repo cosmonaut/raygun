@@ -68,7 +68,7 @@ program raygun
   call init_rays()
 
   call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-       par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
+       par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r)
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wavel, beamrot)
 
@@ -230,14 +230,15 @@ logical function check_bounds(point, lobound, hibound) result(answer)
 end function check_bounds
 
 subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics, par_pos, par_a, &
-     par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c)
+     par_rad, par_in_rad, hyper_pos, hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r)
 
   implicit none
 
   integer, intent(IN)                                         :: numrays, numoptics
   integer, dimension(3), intent (IN)                          :: lobound, hibound
-  double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos
+  double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos, grat_pos, det_pos
   double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad, hyper_rad, par_in_rad
+  double precision, intent(IN)                                :: grat_r, det_r
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
   integer, dimension(numrays), intent(INOUT)                  :: mask_ct
@@ -246,8 +247,9 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
   double precision, dimension(3)  :: t_arr = 0.0, normal = 0.0
   double precision                :: prim_a, prim_b, prim_c
   double precision                :: sec_a, sec_b, sec_c
+  double precision                :: ter_a, ter_b, ter_c
   double precision                :: det_a, det_b, det_c
-  double precision                :: p_bsquare, s_bsquare, d_bsquare
+  double precision                :: p_bsquare, s_bsquare, t_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
 
@@ -260,34 +262,45 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
      do i = 1, numrays
         if (mask(i) .eqv. .false.) then
            !note rederive this to include parabola location
-           prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4.0D0*par_a)
-           prim_b = (2.0D0*rays(bnc, i, 1)*dir(i, 1) + 2.0D0*rays(bnc, i, 2)*dir(i, 2))/(4.0D0*par_a) - dir(i, 3)
-           prim_c = (rays(bnc, i, 1)**2 + rays(bnc, i, 2)**2)/(4.0D0*par_a) - rays(bnc, i, 3)
+           prim_a = (dir(i, 1)**2 + dir(i, 2)**2)/(4.0*par_a)
+           prim_b = (2.0*rays(bnc, i, 1)*dir(i, 1) + 2.0*rays(bnc, i, 2)*dir(i, 2))/(4.0*par_a) - dir(i, 3)
+           prim_c = (rays(bnc, i, 1)**2 + rays(bnc, i, 2)**2)/(4.0*par_a) - rays(bnc, i, 3)
 
-           p_bsquare = (prim_b**2 - 4.0D0*prim_a*prim_c)
+           p_bsquare = (prim_b**2 - 4.0*prim_a*prim_c)
 
            sec_a = ( (hyper_a**2) * (dir(i, 1)**2 + dir(i, 2)**2) - (hyper_c**2 - hyper_a**2) * (dir(i, 3))**2) &
                 / ((hyper_a**2) * (hyper_c**2 - hyper_a**2))
 
-           sec_b = ( (2.0D0*(hyper_a**2)) * (rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
-                + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2)) + (2.0D0*(hyper_c**2 - hyper_a**2)) &
+           sec_b = ( (2.0*(hyper_a**2)) * (rays(bnc, i, 1)*dir(i, 1) - hyper_pos(1)*dir(i, 1) &
+                + rays(bnc, i, 2)*dir(i, 2) - hyper_pos(2)*dir(i, 2)) + (2.0*(hyper_c**2 - hyper_a**2)) &
                 * (hyper_pos(3)*dir(i, 3) - rays(bnc, i, 3)*dir(i, 3))) &
                 / (hyper_a**2 * (hyper_c**2 - hyper_a**2))
 
            sec_c = ( (hyper_a**2) * (rays(bnc, i, 1)**2 + hyper_pos(1)**2 &
-                - 2.0D0*rays(bnc, i, 1)*hyper_pos(1) + rays(bnc, i, 2)**2 + hyper_pos(2)**2 &
-                - 2.0D0*rays(bnc, i, 2)*hyper_pos(2)) + (hyper_c**2 - hyper_a**2) &
-                * (2.0D0*rays(bnc, i, 3)*hyper_pos(3) - rays(bnc, i, 3)**2 - hyper_pos(3)**2) &
+                - 2.0*rays(bnc, i, 1)*hyper_pos(1) + rays(bnc, i, 2)**2 + hyper_pos(2)**2 &
+                - 2.0*rays(bnc, i, 2)*hyper_pos(2)) + (hyper_c**2 - hyper_a**2) &
+                * (2.0*rays(bnc, i, 3)*hyper_pos(3) - rays(bnc, i, 3)**2 - hyper_pos(3)**2) &
                 + (hyper_a**2)*(hyper_c**2 - hyper_a**2)) &
                 / ((hyper_a**2)*(hyper_c**2 - hyper_a**2))
 
-           s_bsquare = (sec_b**2 - 4.0D0*sec_a*sec_c)
+           s_bsquare = (sec_b**2 - 4.0*sec_a*sec_c)
+
+           ter_a = ( grat_pos(1)**2 + grat_pos(2) **2 + grat_pos(3)**2 )
+
+           ter_b = 2*( rays(bnc, i, 1)*dir(i, 1) - dir(i, 1)*grat_pos(1) &
+                + rays(bnc, i, 2)*dir(i, 2) - dir(i, 2)*grat_pos(2) &
+                + rays(bnc, i, 3)*dir(i, 3) - dir(i, 3)*grat_pos(3))
+           
+           ter_c = rays(bnc, i, 1)**2 + grat_pos(1)**2 + rays(bnc, i, 2)**2 + dir(i, 2)**2 &
+                + rays(bnc, i, 3)**2 + dir(i, 3)**2 -2*( grat_pos(1) + grat_pos(2) + grat_pos(3) )
+
+           t_bsquare = ter_b**2 - 4.0*ter_a*ter_c
 
            det_a = 0.0
            det_b = dir(i, 3)
            det_c = rays(bnc, i, 3) + 0.1
 
-           d_bsquare = det_b**2 - 4.0D0*det_a*det_c
+           d_bsquare = det_b**2 - 4.0*det_a*det_c
            
            !PRIMARY math
            if (prim_a == 0.0) then
@@ -487,6 +500,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, numoptics,
 
 end subroutine fire_lazors
 
+
 subroutine vecray(m, d, l, n, gg, i, o)
 !subroutine vecray(m,d,l,n1,n2,n3,g1,g2,g3,i1,i2,i3,o1,o2,o3)
 
@@ -498,9 +512,9 @@ subroutine vecray(m, d, l, n, gg, i, o)
   double precision, intent(IN)                  :: m, d, l
   double precision, dimension(3), intent(IN)    :: gg, i, n
   double precision, dimension(3), intent(INOUT) :: o
-  double precision                              :: a, xn1, xn2, xxi1, xxi3
   double precision, dimension(3,3)              :: r, rt
   double precision, dimension(3)                :: xxo, g
+  double precision                              :: a, xn1, xn2, xxi1, xxi3
 
 ! c	m = order
 ! c	d = line spacing (angstroms/line)

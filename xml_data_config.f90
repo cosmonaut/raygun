@@ -14,7 +14,8 @@ module xml_data_config
   double precision                            :: beamradius, par_a, hyper_a, hyper_c
   double precision                            :: hyper_rad, par_rad, par_in_rad
   character(len=40)                           :: name
-  
+  double precision                            :: grat_r, det_r
+  double precision, dimension(:), pointer     :: det_pos, grat_pos
 
 contains
 
@@ -38,6 +39,7 @@ subroutine read_xml_file_config(fname, lurep, errout)
   logical :: has_numrays, has_beamradius, has_beamrot, has_beamcenter, has_beamstyle
   logical :: has_name, has_par_a, has_hyper_a, has_hyper_c, has_par_pos
   logical :: has_hyper_pos, has_hyper_rad, has_numoptics, has_par_rad, has_par_in_rad
+  logical :: has_det_r, has_grat_r, has_det_pos, has_grat_pos
 
 
   has_lobound = .false.
@@ -57,6 +59,10 @@ subroutine read_xml_file_config(fname, lurep, errout)
   has_hyper_rad = .false.
   has_hyper_a = .false.
   has_hyper_c = .false.
+  has_det_r = .false.
+  has_grat_r = .false.
+  has_det_pos = .false.
+  has_grat_pos = .false.
 
   call xml_open( info, fname, .true. )
   call xml_options( info, report_errors=.true. )
@@ -175,7 +181,27 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_double( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              hyper_c, has_hyper_c )
+
+     case ('grat_r')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             grat_r, has_grat_r )
         
+     case ('det_r')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             det_r, has_det_r )
+
+     case ('grat_pos')
+        call read_xml_double_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             grat_pos, has_grat_pos )
+
+     case ('det_pos')
+        call read_xml_double_array( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             det_pos, has_det_pos )
+
 
      case default
         print *, "DEF!"
