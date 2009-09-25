@@ -14,7 +14,7 @@ module xml_data_config
   double precision                            :: beamradius, par_a, hyper_a, hyper_c
   double precision                            :: hyper_rad, par_rad, par_in_rad
   character(len=40)                           :: name
-  double precision                            :: grat_r, det_r
+  double precision                            :: grat_r, det_r, det_rad, grat_lines, grat_rad
   double precision, dimension(:), pointer     :: det_pos, grat_pos
 
 contains
@@ -39,7 +39,8 @@ subroutine read_xml_file_config(fname, lurep, errout)
   logical :: has_numrays, has_beamradius, has_beamrot, has_beamcenter, has_beamstyle
   logical :: has_name, has_par_a, has_hyper_a, has_hyper_c, has_par_pos
   logical :: has_hyper_pos, has_hyper_rad, has_numoptics, has_par_rad, has_par_in_rad
-  logical :: has_det_r, has_grat_r, has_det_pos, has_grat_pos
+  logical :: has_det_r, has_grat_r, has_det_pos, has_grat_pos, has_grat_lines, has_det_rad
+  logical :: has_grat_rad
 
 
   has_lobound = .false.
@@ -60,9 +61,12 @@ subroutine read_xml_file_config(fname, lurep, errout)
   has_hyper_a = .false.
   has_hyper_c = .false.
   has_det_r = .false.
+  has_det_rad = .false.
   has_grat_r = .false.
+  has_grat_rad = .false.
   has_det_pos = .false.
   has_grat_pos = .false.
+  has_grat_lines = .false.
 
   call xml_open( info, fname, .true. )
   call xml_options( info, report_errors=.true. )
@@ -186,11 +190,26 @@ subroutine read_xml_file_config(fname, lurep, errout)
         call read_xml_double( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              grat_r, has_grat_r )
-        
+
+     case ('grat_lines')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             grat_lines, has_grat_lines )
+
      case ('det_r')
         call read_xml_double( &
              info, tag, endtag, attribs, noattribs, data, nodata, &
              det_r, has_det_r )
+
+     case ('det_rad')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             det_rad, has_det_rad )
+
+     case ('grat_rad')
+        call read_xml_double( &
+             info, tag, endtag, attribs, noattribs, data, nodata, &
+             grat_rad, has_grat_rad )
 
      case ('grat_pos')
         call read_xml_double_array( &
