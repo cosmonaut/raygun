@@ -302,10 +302,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
            t_bsquare = ter_b**2 - 4.0*ter_a*ter_c
 
-           print *, "A: ", ter_a
-           print *, "B: ", ter_b
-           print *, "C: ", ter_c
-           print *, "TB: ", t_bsquare
            ! det_a = 0.0
            ! det_b = dir(i, 3)
            ! det_c = rays(bnc, i, 3) + 0.1
@@ -495,10 +491,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
            !Essential Logic
            if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 1.0) then
-              print *, "PAR"
-              print *, t_arr
-              print *, dir(i, 3)
-              print *, rays(bnc + 1, i, :)
               normal = (/(2/(4*par_a))*rays(bnc + 1, i, 1), & 
                    (2/(4*par_a))*rays(bnc + 1, i, 2), &
                    -1.0/)           
@@ -516,8 +508,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 2.0) then
-              print *, "HYP"
-
               !hyperboloid normal
               normal = (/(2.0D0*(rays(bnc + 1, i, 1)))/(hyper_c**2 - hyper_a**2), &
                    (2.0D0*(rays(bnc + 1, i, 2)))/(hyper_c**2 - hyper_a**2), &
@@ -536,20 +526,25 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 3.0) then
-              print *, "OH HAI"
               normal = (/ 2.0*(rays(bnc + 1, i, 1) - grat_pos(1)), &
                    2.0*(rays(bnc + 1, i, 2) - grat_pos(2)), &
                    2.0*(rays(bnc + 1, i, 3) - grat_pos(3)) /)
               normal = normal/sqrt(dot_product(normal, normal))
               normal(3) = abs(normal(3))
 
-              !if (dir(i, 3) < 0.0) then
-              mask(i) = .true.
-              mask_ct(i) = bnc + 1
-              !else
-              !   mask_ct(i) = bnc + 1
-              !end if
+              if (dir(i, 3) > 0.0) then
+                 mask(i) = .true.
+                 mask_ct(i) = bnc + 1
+              else
+                 mask(i) = .true.
+                 mask_ct(i) = bnc + 1
+              end if
                  
+              !calc line spacing
+              !calc direction of line on grating.
+              
+              
+              !call vecray(1, d, 1500.0, normal, (/ 0.0, -1.0, 0.0/), dir(i, :), dir(i, :))
               ! mask(i) = .true.
               ! mask_ct(i) = bnc + 1
               
@@ -851,7 +846,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
-  call plenv(-8.0, 3.2, -0.6, 0.6, just, axis)
+  call plenv(-2.4, 3.2, -0.6, 0.6, just, axis)
   call pllab("Z Axis (Meters)", "Y Axis (Meters)", "View from X Axis")
   do i = 1, numrays
      if (abs(rays(1, i, 1)) <= 0.01) then
@@ -888,17 +883,14 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   end do
 
   !step_cir = 1.0/16000.0
-  xxx = -4.1
+  xxx = -2.1
   do i = 1, 40
      if (i == 1) then
         !no!
      else
-        xxx(i) = xxx(i - 1) + (4.1009/40.0)
+        xxx(i) = xxx(i - 1) + (2.1009/40.0)
      end if
-     yyy(i) = sqrt(2.0**2 - (xxx(i) + 2.1)**2 )
-     print *, "y: ", yyy(i)
-     print *, "x: ", xxx(i)
-
+     yyy(i) = sqrt(1.0**2 - (xxx(i) + 1.1)**2 )
   end do
 
   call plcol0(1)
@@ -913,7 +905,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-7.0, 3.2, -0.6, 0.6, 0, axis)
+  call plenv(-2.4, 3.2, -0.6, 0.6, 0, axis)
   call pllab("Z Axis (Meters)", "X Axis (Meters)", "View from Y Axis")
 
   do i = 1, numrays
