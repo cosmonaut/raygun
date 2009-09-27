@@ -70,7 +70,7 @@ program raygun
   call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
        numoptics, par_pos, par_a, par_rad, par_in_rad, hyper_pos, &
        hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r, &
-       det_rad, grat_rad)
+       det_rad, grat_rad, grat_lines)
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wavel, beamrot)
 
@@ -106,8 +106,7 @@ contains
     rays = 0.0
 
     allocate(dir(numrays, 3))
-    !update this to calculate dir from beamcenter to primary
-    !vertex. also normalize
+
     dir(:, 1) = 0.0
     dir(:, 2) = 0.0
     dir(:, 3) = -1.0
@@ -210,6 +209,7 @@ contains
 
 end program raygun
 
+
 logical function check_bounds(point, lobound, hibound) result(answer)
 
   implicit none
@@ -231,10 +231,25 @@ logical function check_bounds(point, lobound, hibound) result(answer)
 
 end function check_bounds
 
+
+subroutine cross_product(x, y, answer) 
+
+  implicit none
+
+  double precision, dimension(3), intent(IN)    :: x, y
+  double precision, dimension(3), intent(INOUT) :: answer
+
+  answer = (/ x(2)*y(3) - x(3)*y(2), &
+       -x(1)*y(3) - x(3)*y(1), &
+       x(1)*y(2) - x(2)*y(1) /)
+
+end subroutine cross_product
+
+
 subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
      numoptics, par_pos, par_a, par_rad, par_in_rad, hyper_pos, &
      hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r, &
-     det_rad, grat_rad)
+     det_rad, grat_rad, grat_lines)
 
   implicit none
 
@@ -242,13 +257,15 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   integer, dimension(3), intent (IN)                          :: lobound, hibound
   double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos, grat_pos, det_pos
   double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad, hyper_rad, par_in_rad
-  double precision, intent(IN)                                :: grat_r, det_r, det_rad, grat_rad
+  double precision, intent(IN)                                :: grat_r, det_r, det_rad, grat_rad, grat_lines
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
   integer, dimension(numrays), intent(INOUT)                  :: mask_ct
   double precision, dimension(2, 20)                          :: t_pos
   logical, dimension(numrays)     :: mask
-  double precision, dimension(3)  :: t_arr = 0.0, normal = 0.0
+  double precision, dimension(3)  :: t_arr = 0.0, normal = 0.0, gr_proj = 0.0
+  double precision, dimension(3)  :: gr_scrape = 0.0, gr_dir = 0.0, gr_scrape_norm = 0.0, pr_scr_plane = 0.0
+  double precision, dimension(3)  :: gr_tan = 0.0, gr_tan_proj = 0.0, gr_line_dir = 0.0, lamont = 0.0
   double precision                :: prim_a, prim_b, prim_c
   double precision                :: sec_a, sec_b, sec_c
   double precision                :: ter_a, ter_b, ter_c
@@ -256,11 +273,28 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision                :: p_bsquare, s_bsquare, t_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
-
-
+  integer :: hack = 0
+  double precision, dimension(numrays, 3) :: testarr
+  testarr = 0.0
   t_pos = 0.0
   mask = .false.
   mask_ct = 1
+
+  gr_proj = (/ -2.0*grat_pos(1), &
+       -2.0*grat_pos(2), &
+       2.0*(-1.7833300330000650 - grat_pos(3)) /)
+  !print *, "GRAT PROJ Z POINT: ", sqrt(grat_r**2 - grat_pos(1)**2) + grat_pos(3)
+  gr_proj = gr_proj/sqrt(dot_product(gr_proj, gr_proj))
+  gr_proj = -gr_proj
+  print *, "gradproj: ", gr_proj
+
+  gr_scrape = (/ 0.0, -1.0, 0.0 /)
+
+  call cross_product(gr_scrape, gr_proj, pr_scr_plane)
+  pr_scr_plane = pr_scr_plane/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
+  !pr_scr_plane = -pr_scr_plane
+  print *, "PR SCR: ", pr_scr_plane
+
 
   do
      do i = 1, numrays
@@ -302,11 +336,11 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
            t_bsquare = ter_b**2 - 4.0*ter_a*ter_c
 
-           ! det_a = 0.0
-           ! det_b = dir(i, 3)
-           ! det_c = rays(bnc, i, 3) + 0.1
+           det_a = 0.0
+           det_b = dir(i, 3)
+           det_c = rays(bnc, i, 3) + 0.1
 
-           ! d_bsquare = det_b**2 - 4.0*det_a*det_c
+           d_bsquare = det_b**2 - 4.0*det_a*det_c
            
            !PRIMARY math
            if (prim_a == 0.0) then
@@ -469,22 +503,23 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               end if
            end if
               
-           ! if (det_a == 0.0) then
-           !    if (d_bsquare >= 0.0) then
-           !       t_pos(:, t_calcd) = (/ -det_c/det_b, 3.0/)
-           !       t_arr = dir(i, :)*t_pos(1, t_calcd)
-           !       !print *, "det tarr: ", t_arr
-           !       if (abs(rays(bnc, i, 1) + t_arr(1)) <= 0.4 .and. abs(rays(bnc, i, 2) + t_arr(2)) <= 0.4) then
-           !          t_calcd = t_calcd + 1
-           !       else
-           !          t_pos(:, t_calcd) = (/0.0, 0.0/)
-           !          t_arr = 0.0
-           !       end if
-           !    else
-           !       print *, "ERROR"
-           !       !stop
-           !    end if
-           !end if
+           if (det_a == 0.0) then
+              if (d_bsquare >= 0.0) then
+                 t_pos(:, t_calcd) = (/ -det_c/det_b, 4.0/)
+                 t_arr = dir(i, :)*t_pos(1, t_calcd)
+                 !print *, "det tarr: ", t_arr
+                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. abs(rays(bnc, i, 1) + t_arr(1)) >= 0.05 .and. &
+                      abs(rays(bnc, i, 2) + t_arr(2)) <= 5555.4) then
+                    t_calcd = t_calcd + 1
+                 else
+                    t_pos(:, t_calcd) = (/0.0, 0.0/)
+                    t_arr = 0.0
+                 end if
+              else
+                 print *, "ERROR"
+                 !stop
+              end if
+           end if
 
            t_arr = dir(i, :) * minval(t_pos(1, :), 1, t_pos(1, :) > 0.1)
            rays(bnc + 1, i, :) = rays(bnc, i, :) + t_arr
@@ -530,25 +565,93 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                    2.0*(rays(bnc + 1, i, 2) - grat_pos(2)), &
                    2.0*(rays(bnc + 1, i, 3) - grat_pos(3)) /)
               normal = normal/sqrt(dot_product(normal, normal))
-              normal(3) = abs(normal(3))
-
+              normal(3) = -abs(normal(3))
+              !normal = -normal
+              print *, "NORM: ", normal
               if (dir(i, 3) > 0.0) then
                  mask(i) = .true.
                  mask_ct(i) = bnc + 1
               else
-                 mask(i) = .true.
+                 !mask(i) = .true.
                  mask_ct(i) = bnc + 1
               end if
                  
               !calc line spacing
               !calc direction of line on grating.
               
+              !conceptual groove dir is (0, -1, 0) 
+
+              !we calc a special normal for the groove direction,
+              !which is the normal at the vertex of the
+              !grating. i.e. the projection direction for the grooves
               
-              !call vecray(1, d, 1500.0, normal, (/ 0.0, -1.0, 0.0/), dir(i, :), dir(i, :))
-              ! mask(i) = .true.
-              ! mask_ct(i) = bnc + 1
+              !we use gr_proj for projection dir, and gr_scrape for groove line direction.
+
+
+              !write a cross product function... sigh
+              !pr_scr_plane = abs(pr_scr_plane)
+              !print *, "cp test: ", pr_scr_plane
               
-           else
+              !project normal onto pr_scr_plane
+              call cross_product(normal, pr_scr_plane, lamont)
+              lamont = lamont/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
+              call cross_product(pr_scr_plane, lamont, gr_scrape_norm)
+              gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
+
+              print *, "GR SCR: ", gr_scrape_norm
+              print *, "GR scr size: ", sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
+              !gr_scrape_norm = normal - dot_product(normal, pr_scr_plane)*pr_scr_plane
+              !gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
+
+
+              !gr_scrape_norm(1) = abs(gr_scrape_norm(1))
+              !print *, "GR SCR NORM: ", gr_scrape_norm
+
+              lamont = 0.0 !dummy
+              call cross_product(gr_scrape, gr_scrape_norm, lamont)
+              lamont = lamont/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
+              call cross_product(gr_scrape_norm, lamont, gr_dir)
+              gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
+
+              !gr_dir = gr_scrape - dot_product(gr_scrape, gr_scrape_norm)*gr_scrape_norm
+              !gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
+              gr_dir(1) = abs(gr_dir(1))
+
+              print *, "GR_DOR: ", gr_dir
+              !just take absolute of x component here depending on grating tilt off z
+
+
+
+              !fuckken time for line density calc.
+              call cross_product(normal, gr_scrape, gr_tan)
+              gr_tan = gr_tan/sqrt(dot_product(gr_tan, gr_tan))
+              print *, "GR TAN: ", gr_tan
+              
+              call cross_product(gr_scrape, gr_proj, gr_line_dir)
+              gr_line_dir = gr_line_dir/sqrt(dot_product(gr_line_dir, gr_line_dir))
+
+              print *, "GR LINE DIR: ", gr_line_dir
+              !gr_line_dir = gr_line_dir * (1.0/3600.0)*10**7
+              print *, "line len before: ", (1.0/grat_lines)*10**7
+              print *, "line len after: ", ((1.0/grat_lines)*10**7)/abs(dot_product(gr_tan, gr_line_dir))
+              print *, "X: ", rays(bnc + 1, i, 1)
+
+              
+
+              print *, dir(i, :)
+              !normal(3) = abs(normal(3))
+              call vecray(-1.0,  ((1.0/3600.0)*10**7)/abs(dot_product(gr_tan, gr_line_dir)), &
+                   1500.0, normal, gr_dir, dir(i, :), dir(i, :))
+              dir(i,3) = -dir(i,3)
+              dir(i,1) = -(dir(i,1))
+              !dir(i, :) = -dir(i, :)
+              print *, "OUT DIR: ", dir(i, :)
+              
+              
+           else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 4.0) then
+              mask(i) = .true.
+              mask_ct(i) = bnc + 1
+           else 
               print *, "EPIC ERROR, NO T"
               mask(i) = .true.
               mask_ct(i) = bnc + 1
@@ -573,94 +676,15 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   end do
   !print *, mask
 
+  ! do i = 1, hack - 1
+  !    if (i == hack - 1) then
+  !       !stop
+  !    else
+  !       print *, dot_product(testarr(i, 1:2), testarr(i + 1, 1:2))
+  !    end if
+  ! end do
+  print *, "finished loop"
 end subroutine fire_lazors
-
-
-! subroutine intersect(a, b, c, t, t_calcd, r, inr, pos, dir)
-
-!   implicit none
-
-!   double precision, intent(IN) :: a, b, c, r, inr
-!   double precision, dimension(3), intent(IN) :: pos, dir
-!   double precision, dimension(2, 20), intent(INOUT) :: t
-!   integer, intent(INOUT) :: t_calcd
-!   double precision :: bsquare
-!   double precision, dimension(3) :: tarr
-
-
-!   bsquare = b**2 - 4*a*c
-
-!   if (a == 0.0) then
-!      if (bsquare >= 0.0) then
-!         t(:, t_calcd) = (/ -c/b, 1.0 /)
-!         tarr = dir*t(1, t_calcd)
-        
-!      else
-!         print *, "ERROR"
-!      end if
-!   else if (bsquare == 0.0) then
-
-!   else if (bsquare > 0) then
-
-!   end if
-
-     ! !PRIMARY math
-     ! if (prim_a == 0.0) then
-     !    if (p_bsquare >= 0.0 .and. (.true.)) then
-     !       !go ahead
-     !       t_pos(:, t_calcd) = (/-prim_c/prim_b, 1.0/)
-     !       t_arr = dir(i, :)*t_pos(1, t_calcd)
-     !       if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
-     !            .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then
-     !          !good
-     !          t_calcd = t_calcd + 1
-     !       else
-     !          !not an intersection
-     !          t_pos(:, t_calcd) = (/0.0, 0.0/)
-     !          t_arr = 0.0
-     !       end if
-
-     !    else
-     !       !let it go!
-     !       print *, "ERROR, not intersect!"
-     !    end if
-     ! else if (p_bsquare == 0) then
-     !    t_pos(:, t_calcd) = (/-prim_b/(2*prim_a), 1.0/)
-     !    t_arr = dir(i, :)*t_pos(1, t_calcd)
-     !    if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
-     !         .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then
-     !       !good
-     !       t_calcd = t_calcd + 1
-     !    else
-     !       t_pos(:, t_calcd) = (/0.0, 0.0/)
-     !       t_arr = 0.0
-     !    end if
-
-     ! else if (p_bsquare > 0) then
-     !    !print *, "PBSQUARE > 0??????? "
-     !    t_pos(:, t_calcd) = (/(-prim_b + sqrt(p_bsquare))/(2*prim_a), 1.0/)
-     !    t_arr = dir(i, :)*t_pos(1, t_calcd)
-     !    if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
-     !         .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then    
-     !       t_calcd = t_calcd + 1
-     !    else
-     !       t_pos(:, t_calcd) = (/0.0, 0.0/)
-     !       t_arr = 0.0
-     !    end if
-
-     !    t_pos(:, t_calcd) = (/(-prim_b - sqrt(p_bsquare))/(2*prim_a), 1.0/)
-     !    t_arr = dir(i, :)*t_pos(1, t_calcd)
-     !    if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
-     !         .and. sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) >= par_in_rad) then
-     !       t_calcd = t_calcd + 1
-     !    else
-     !       t_pos(:, t_calcd) = (/0.0, 0.0/)
-     !       t_arr = 0.0
-     !    end if
-     ! end if
-
-
-!end subroutine intersect
 
 
 subroutine vecray(m, d, l, n, gg, i, o)
@@ -678,18 +702,29 @@ subroutine vecray(m, d, l, n, gg, i, o)
   double precision, dimension(3)                :: xxo, g
   double precision                              :: a, xn1, xn2, xxi1, xxi3
 
-! c	m = order
-! c	d = line spacing (angstroms/line)
-! c	l = wavelength (angstroms)
-! c	N is plane normal, pointing up on side that rays hit
-! c	G is vector in direction of lines on grating
-! c	I is incident vector pointing in ray prop. direction
-! c	o is output vector pointing in ray prop. direction
-! c	x indicates primed coordinate system
-! c	xx indicates double primed coordinate system
-
+  ! c	m = order
+  ! c	d = line spacing (angstroms/line)
+  ! c	l = wavelength (angstroms)
+  ! c	N is plane normal, pointing up on side that rays hit
+  ! c	G is vector in direction of lines on grating
+  ! c	I is incident vector pointing in ray prop. direction
+  ! c	o is output vector pointing in ray prop. direction
+  ! c	x indicates primed coordinate system
+  ! c	xx indicates double primed coordinate system
+  
   g = gg !our copy to work with
-	
+
+  if (sqrt(dot_product(g, g)) /= 1.0) then
+     print *, "bad grating line direction length: ", sqrt(dot_product(g, g))
+
+  else if (sqrt(dot_product(n, n)) /= 1.0) then
+     print *, "bad normal length: ", sqrt(dot_product(n, n))
+
+  else if (sqrt(dot_product(i, i)) /= 1.0) then
+     print *, "bad incoming length: ", sqrt(dot_product(i, i))
+     
+  end if
+
   goto 60
 50 continue
   ! g1 = -g1
@@ -698,18 +733,18 @@ subroutine vecray(m, d, l, n, gg, i, o)
   g = -g
 60 continue
   
-  a = sqrt ( 1.0 - g(3)*g(3) )
-  
-  xn1 = ( n(1)*g(2) - n(2)*g(1) )/a
-  xn2 = g(3) * ( n(1)*g(1) + n(2)*g(2) )/a - a*n(3)
+  a = sqrt(1.0 - g(3)*g(3))
+
+  xn1 = (n(1)*g(2) - n(2)*g(1))/a
+  xn2 = g(3)*(n(1)*g(1) + n(2)*g(2))/a - a*n(3)
 
   !xn1 = ( n1*g2 - n2*g1 )/a
   !xn2 = g3*( n1*g1 + n2*g2 )/a  - a*n3
  
-!  c	R is the transform from basic to xx coordinates
-!  c	in xx coordinates, g is in the z direction
-!  c	RT is the return transform
-
+  !  c	R is the transform from basic to xx coordinates
+  !  c	in xx coordinates, g is in the z direction
+  !  c	RT is the return transform
+  
   r(1, :) = (/ ( xn2*g(2) - xn1*g(3)*g(1) )/a, &
        -( xn2*g(1) + xn1*g(2)*g(3) )/a, &
        xn1*a /)
@@ -730,6 +765,16 @@ subroutine vecray(m, d, l, n, gg, i, o)
 
   rt = transpose(r)
 
+  ! rt(1,1) = r(1,1)
+  ! rt(1,2) = r(2,1)
+  ! rt(1,3) = r(3,1)
+  ! rt(2,1) = r(1,2)
+  ! rt(2,2) = r(2,2)
+  ! rt(2,3) = r(3,2)
+  ! rt(3,1) = r(1,3)
+  ! rt(3,2) = r(2,3)
+  ! rt(4,3) = r(3,3)
+
   ! rt11 = r11
   ! rt12 = r21
   ! rt13 = r31
@@ -739,7 +784,6 @@ subroutine vecray(m, d, l, n, gg, i, o)
   ! rt31 = r13
   ! rt32 = r23
   ! rt33 = r33
-  
   
   !xxi1 = i*r11 + i2*r12 + i3*r13
   xxi1 = dot_product(i, r(1, :))
@@ -751,9 +795,10 @@ subroutine vecray(m, d, l, n, gg, i, o)
   
   !xxo = (/ (m*l/d) + xxi1, xxi3, sqrt ( 1.0 - xxo1*xxo1 - xxo3*xxo3 ) /)
   xxo(1) = (m*l/d) + xxi1
+  print *, "XXo1: ", xxo(1)
   xxo(3) = xxi3
-  xxo(2) = sqrt ( 1.0 - xxo(1)*xxo(1) - xxo(3)*xxo(3) )
-
+  xxo(2) = sqrt( 1.0 - xxo(1)*xxo(1) - xxo(3)*xxo(3) )
+  print *, "XXo2: ", xxo(2)
   ! xxo1 = (m*l/d) + xxi1
   ! xxo3 = xxi3
   ! xxo2 = sqrt ( 1.0 - xxo1*xxo1 - xxo3*xxo3 )
@@ -762,7 +807,12 @@ subroutine vecray(m, d, l, n, gg, i, o)
   ! o2 = xxo1*rt21 + xxo2*rt22 + xxo3*rt23
   ! o3 = xxo1*rt31 + xxo2*rt32 + xxo3*rt33
 
-  o = matmul(xxo, rt)
+  o(1) = xxo(1)*rt(1,1) + xxo(2)*rt(1,2) + xxo(3)*rt(1,3)
+  o(2) = xxo(1)*rt(2,1) + xxo(2)*rt(2,2) + xxo(3)*rt(2,3)
+  o(3) = xxo(1)*rt(3,1) + xxo(2)*rt(3,2) + xxo(3)*rt(3,3)
+
+  !o = matmul(xxo, rt)
+  o = o/sqrt(dot_product(o, o))
 
   return
 end subroutine vecray
@@ -779,7 +829,8 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   character(len=40), intent(IN)                        :: name
   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
   double precision, dimension(2), intent(IN)           :: beamrot
-  real(plflt), dimension(40)                           :: x, y, xx, yy, xxx, yyy
+  real(plflt), dimension(40)                           :: x, y, xx, yy
+  real(plflt), dimension(120)                          :: xxx, yyy, yyy2
   real(plflt)                                          :: xmin, xmax, ymin, ymax, zmin, zmax
   integer                                              :: just, axis, good = 0
 
@@ -846,7 +897,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
-  call plenv(-2.4, 3.2, -0.6, 0.6, just, axis)
+  call plenv(-2.4, 3.2, -0.6, 0.6, 0, axis)
   call pllab("Z Axis (Meters)", "Y Axis (Meters)", "View from X Axis")
   do i = 1, numrays
      if (abs(rays(1, i, 1)) <= 0.01) then
@@ -883,14 +934,17 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   end do
 
   !step_cir = 1.0/16000.0
-  xxx = -2.1
-  do i = 1, 40
+  ! ROWLAND CENTER: x, z   0.54000000000000004      -0.94166501650003243     
+
+  xxx = -2.0*0.94166501650003243
+  do i = 1, 120
      if (i == 1) then
         !no!
      else
-        xxx(i) = xxx(i - 1) + (2.1009/40.0)
+        xxx(i) = xxx(i - 1) + (2.1009/119.0)
      end if
-     yyy(i) = sqrt(1.0**2 - (xxx(i) + 1.1)**2 )
+     yyy(i) = sqrt(1.0**2 - (xxx(i) + 0.941665)**2 ) + 0.54
+     yyy2(i) = -sqrt(1.0**2 - (xxx(i) + 0.941665)**2 ) + 0.54
   end do
 
   call plcol0(1)
@@ -905,7 +959,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-2.4, 3.2, -0.6, 0.6, 0, axis)
+  call plenv(-2.4, 3.2, -1.6, 1.6, 0, axis)
   call pllab("Z Axis (Meters)", "X Axis (Meters)", "View from Y Axis")
 
   do i = 1, numrays
@@ -929,8 +983,12 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   call plline(xx, yy)
 
   call plline(xxx, yyy)
-  yyy = -yyy
-  call plline(xxx, yyy)
+  !yyy = -yyy
+  call plline(xxx, yyy2)
+
+  !middle of grat circle:    1.0800000000000001      -9.99999999999999084E-002
+  call plpoin((/0.0, -0.1/), (/0.0, 1.08/), 2)
+
 
   good = count(mask_ct(:) .eq. maxval(mask_ct))
 
@@ -1080,6 +1138,7 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
   deallocate(points)
 
 end subroutine plot_spot
+
 
 subroutine xmlify(rays, numrays, mask_ct, name, wavel)
   integer, intent(IN)                                      :: numrays
@@ -1368,6 +1427,7 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
   close(1)
 
 end subroutine xmlify
+
 
 SUBROUTINE init_random_seed()
 
