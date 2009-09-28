@@ -5,10 +5,6 @@ program raygun
   implicit none
 
   interface
-!      subroutine init_optix()
-       
-!      end subroutine init_optix
-
 !      subroutine fire_lazors()
 
 !      end subroutine fire_lazors
@@ -64,7 +60,7 @@ program raygun
   allocate(wavel(numrays))
   wavel = 0.0
 
-  !CHARGIN MAH LAZOR
+  !man the harpoons
   call init_rays()
 
   call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
@@ -565,7 +561,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                    2.0*(rays(bnc + 1, i, 2) - grat_pos(2)), &
                    2.0*(rays(bnc + 1, i, 3) - grat_pos(3)) /)
               normal = normal/sqrt(dot_product(normal, normal))
-              normal(3) = -abs(normal(3))
+              !normal(3) = -abs(normal(3))
               !normal = -normal
               print *, "NORM: ", normal
               if (dir(i, 3) > 0.0) then
@@ -575,9 +571,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                  !mask(i) = .true.
                  mask_ct(i) = bnc + 1
               end if
-                 
-              !calc line spacing
-              !calc direction of line on grating.
               
               !conceptual groove dir is (0, -1, 0) 
 
@@ -587,11 +580,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               
               !we use gr_proj for projection dir, and gr_scrape for groove line direction.
 
-
-              !write a cross product function... sigh
-              !pr_scr_plane = abs(pr_scr_plane)
-              !print *, "cp test: ", pr_scr_plane
-              
               !project normal onto pr_scr_plane
               call cross_product(normal, pr_scr_plane, lamont)
               lamont = lamont/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
@@ -615,7 +603,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
               !gr_dir = gr_scrape - dot_product(gr_scrape, gr_scrape_norm)*gr_scrape_norm
               !gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
-              gr_dir(1) = abs(gr_dir(1))
+              !gr_dir(1) = abs(gr_dir(1))
 
               print *, "GR_DOR: ", gr_dir
               !just take absolute of x component here depending on grating tilt off z
@@ -830,7 +818,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   real(plflt), dimension(100, numrays, 3), intent(IN)  :: rays
   double precision, dimension(2), intent(IN)           :: beamrot
   real(plflt), dimension(40)                           :: x, y, xx, yy
-  real(plflt), dimension(120)                          :: xxx, yyy, yyy2
+  real(plflt), dimension(1000)                         :: xxx, yyy, yyy2
   real(plflt)                                          :: xmin, xmax, ymin, ymax, zmin, zmax
   integer                                              :: just, axis, good = 0
 
@@ -933,15 +921,16 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
      yy(i) = sqrt(12.0*xx(i))
   end do
 
-  !step_cir = 1.0/16000.0
   ! ROWLAND CENTER: x, z   0.54000000000000004      -0.94166501650003243     
 
-  xxx = -2.0*0.94166501650003243
-  do i = 1, 120
+  !HACKY CIRCLE!
+  !xxx = -2.0*0.94166501650003243
+  xxx = -2.0
+  do i = 1, 1000
      if (i == 1) then
         !no!
      else
-        xxx(i) = xxx(i - 1) + (2.1009/119.0)
+        xxx(i) = xxx(i - 1) + (2.2/1000.0)
      end if
      yyy(i) = sqrt(1.0**2 - (xxx(i) + 0.941665)**2 ) + 0.54
      yyy2(i) = -sqrt(1.0**2 - (xxx(i) + 0.941665)**2 ) + 0.54
@@ -959,7 +948,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-2.4, 3.2, -1.6, 1.6, 0, axis)
+  call plenv(-2.4, 3.2, -1.6, 1.6, just, axis)
   call pllab("Z Axis (Meters)", "X Axis (Meters)", "View from Y Axis")
 
   do i = 1, numrays
@@ -982,12 +971,15 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   yy = -yy
   call plline(xx, yy)
 
+  call plcol0(3)
+  call pllsty(2)
   call plline(xxx, yyy)
   !yyy = -yyy
   call plline(xxx, yyy2)
-
+  call pllsty(1)
   !middle of grat circle:    1.0800000000000001      -9.99999999999999084E-002
-  call plpoin((/0.0, -0.1/), (/0.0, 1.08/), 2)
+  call plcol0(9)
+  call plpoin((/-0.1/), (/1.08/), 4)
 
 
   good = count(mask_ct(:) .eq. maxval(mask_ct))
