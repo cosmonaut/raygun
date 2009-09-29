@@ -630,9 +630,9 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               !normal(3) = abs(normal(3))
               call vecray(-1.0,  ((1.0/3600.0)*10**7)/abs(dot_product(gr_tan, gr_line_dir)), &
                    1500.0, normal, gr_dir, dir(i, :), dir(i, :))
-              dir(i,3) = -dir(i,3)
-              dir(i,1) = -(dir(i,1))
-              !dir(i, :) = -dir(i, :)
+              !dir(i,3) = -dir(i,3)
+              !dir(i,1) = -(dir(i,1))
+              dir(i, :) = -dir(i, :)
               print *, "OUT DIR: ", dir(i, :)
               
               
