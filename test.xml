@@ -2,7 +2,7 @@
 <name>test</name>
 <lowerbound>-2 -2 -6</lowerbound>
 <upperbound>2 2 4</upperbound>
-<numrays>200</numrays>
+<numrays>2000</numrays>
 <!-- y, x (yeah, yeah, I know...) -->
 <!-- <beamrot>0.0 0.0833333333333</beamrot> -->
 <!-- <beamrot>0.0 0.0/beamrot> -->

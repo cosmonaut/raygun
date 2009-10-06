@@ -561,8 +561,9 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                    2.0*(rays(bnc + 1, i, 2) - grat_pos(2)), &
                    2.0*(rays(bnc + 1, i, 3) - grat_pos(3)) /)
               normal = normal/sqrt(dot_product(normal, normal))
-              !normal(3) = -abs(normal(3))
-              !normal = -normal
+              !normal(3) = -normal(3)
+              !normal(1) = -normal(1)
+              normal = -normal
               print *, "NORM: ", normal
               if (dir(i, 3) > 0.0) then
                  mask(i) = .true.
@@ -591,8 +592,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               !gr_scrape_norm = normal - dot_product(normal, pr_scr_plane)*pr_scr_plane
               !gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
 
-
-              !gr_scrape_norm(1) = abs(gr_scrape_norm(1))
+              !That's RIGHT! GO FORWARD!
+              gr_scrape_norm(1) = abs(gr_scrape_norm(1))
               !print *, "GR SCR NORM: ", gr_scrape_norm
 
               lamont = 0.0 !dummy
@@ -627,12 +628,15 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               
 
               print *, dir(i, :)
-              !normal(3) = abs(normal(3))
+              
+              !normal(2) = -(normal(2))
+              
+              
               call vecray(-1.0,  ((1.0/3600.0)*10**7)/abs(dot_product(gr_tan, gr_line_dir)), &
                    1500.0, normal, gr_dir, dir(i, :), dir(i, :))
-              !dir(i,3) = -dir(i,3)
-              !dir(i,1) = -(dir(i,1))
-              dir(i, :) = -dir(i, :)
+              !dir(i,1) = -dir(i,1)
+              !dir(i,2) = -(dir(i,2))
+              !dir(i, :) = -dir(i, :)
               print *, "OUT DIR: ", dir(i, :)
               
               
