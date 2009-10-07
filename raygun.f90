@@ -252,8 +252,9 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   integer, intent(IN)                                         :: numrays, numoptics
   integer, dimension(3), intent (IN)                          :: lobound, hibound
   double precision, dimension(3), intent(IN)                  :: par_pos, hyper_pos, grat_pos, det_pos
-  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad, hyper_rad, par_in_rad
-  double precision, intent(IN)                                :: grat_r, det_r, det_rad, grat_rad, grat_lines
+  double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad 
+  double precision, intent(IN)                                :: hyper_rad, par_in_rad, grat_lines
+  double precision, intent(IN)                                :: grat_r, det_r, det_rad, grat_rad
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
   integer, dimension(numrays), intent(INOUT)                  :: mask_ct
@@ -269,9 +270,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision                :: p_bsquare, s_bsquare, t_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
-  integer :: hack = 0
-  double precision, dimension(numrays, 3) :: testarr
-  testarr = 0.0
+
+
   t_pos = 0.0
   mask = .false.
   mask_ct = 1
@@ -279,17 +279,14 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   gr_proj = (/ -2.0*grat_pos(1), &
        -2.0*grat_pos(2), &
        2.0*(-1.7833300330000650 - grat_pos(3)) /)
-  !print *, "GRAT PROJ Z POINT: ", sqrt(grat_r**2 - grat_pos(1)**2) + grat_pos(3)
+
   gr_proj = gr_proj/sqrt(dot_product(gr_proj, gr_proj))
   gr_proj = -gr_proj
-  print *, "gradproj: ", gr_proj
 
   gr_scrape = (/ 0.0, -1.0, 0.0 /)
 
   call cross_product(gr_scrape, gr_proj, pr_scr_plane)
   pr_scr_plane = pr_scr_plane/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
-  !pr_scr_plane = -pr_scr_plane
-  print *, "PR SCR: ", pr_scr_plane
 
 
   do
@@ -332,11 +329,19 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
            t_bsquare = ter_b**2 - 4.0*ter_a*ter_c
 
-           det_a = 0.0
-           det_b = dir(i, 3)
-           det_c = rays(bnc, i, 3) + 0.1
+           det_a = dir(i, 1)**2 + dir(i, 3)**2
+           det_b = (2.0*(rays(bnc, i, 1)*dir(i, 1) - det_pos(1)*dir(i, 1)) &
+                + 2.0*(rays(bnc, i, 3)*dir(i, 3) - det_pos(3)*dir(i, 3)))
+           det_c = (rays(bnc, i, 1)**2 + det_pos(1)**2 - 2.0*rays(bnc, i, 1)*det_pos(1) &
+                + rays(bnc, i, 3)**2 + det_pos(3)**2 - 2.0*rays(bnc, i, 3)*det_pos(3) -det_r**2)
 
            d_bsquare = det_b**2 - 4.0*det_a*det_c
+
+           ! det_a = 0.0
+           ! det_b = dir(i, 3)
+           ! det_c = rays(bnc, i, 3) + 0.1
+
+           ! d_bsquare = det_b**2 - 4.0*det_a*det_c
            
            !PRIMARY math
            if (prim_a == 0.0) then
@@ -371,7 +376,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               end if
 
            else if (p_bsquare > 0) then
-              !print *, "PBSQUARE > 0??????? "
               t_pos(:, t_calcd) = (/(-prim_b + sqrt(p_bsquare))/(2*prim_a), 1.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if (sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= par_rad &
@@ -477,7 +481,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                  t_arr = 0.0
               end if
            else if (t_bsquare >= 0.0) then
-              print *, "ME"
               t_pos(:, t_calcd) = (/ (-ter_b + sqrt(t_bsquare))/(2.0*ter_a), 3.0 /)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
               if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
@@ -503,8 +506,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               if (d_bsquare >= 0.0) then
                  t_pos(:, t_calcd) = (/ -det_c/det_b, 4.0/)
                  t_arr = dir(i, :)*t_pos(1, t_calcd)
-                 !print *, "det tarr: ", t_arr
-                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. abs(rays(bnc, i, 1) + t_arr(1)) >= 0.05 .and. &
+                 if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. abs(rays(bnc, i, 1) + t_arr(1)) >= 0.5 .and. &
                       abs(rays(bnc, i, 2) + t_arr(2)) <= 5555.4) then
                     t_calcd = t_calcd + 1
                  else
@@ -515,6 +517,37 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                  print *, "ERROR"
                  !stop
               end if
+           else if (d_bsquare == 0.0) then
+              t_pos(:, t_calcd) = (/ -det_b/(2.0*det_a), 4.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. abs(rays(bnc, i, 1) + t_arr(1)) >= 0.5 .and. &
+                   abs(rays(bnc, i, 2) + t_arr(2)) <= 5555.4) then
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+           else if (d_bsquare >= 0.0) then
+              t_pos(:, t_calcd) = (/ (-det_b + sqrt(d_bsquare))/(2.0*det_a), 4.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. abs(rays(bnc, i, 1) + t_arr(1)) >= 0.5 .and. &
+                   abs(rays(bnc, i, 2) + t_arr(2)) <= 5555.4) then
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+
+              t_pos(:, t_calcd) = (/ (-det_b - sqrt(d_bsquare))/(2.0*det_a), 4.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. abs(rays(bnc, i, 1) + t_arr(1)) >= 0.5 .and. &
+                   abs(rays(bnc, i, 2) + t_arr(2)) <= 5555.4) then
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+
            end if
 
            t_arr = dir(i, :) * minval(t_pos(1, :), 1, t_pos(1, :) > 0.1)
@@ -534,7 +567,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                  mask_ct = bnc + 1
               end if
 
-              print *, mask(i)
               dir(i, :) = dir(i, :) - 2*normal*dot_product(dir(i, :), normal)
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
 
@@ -549,7 +581,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                  mask(i) = .true.
                  mask_ct(i) = bnc + 1
               else
-                 !mask(i) = .true.
                  mask_ct(i) = bnc + 1
               end if
 
@@ -561,15 +592,13 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                    2.0*(rays(bnc + 1, i, 2) - grat_pos(2)), &
                    2.0*(rays(bnc + 1, i, 3) - grat_pos(3)) /)
               normal = normal/sqrt(dot_product(normal, normal))
-              !normal(3) = -normal(3)
-              !normal(1) = -normal(1)
+
               normal = -normal
-              print *, "NORM: ", normal
+
               if (dir(i, 3) > 0.0) then
                  mask(i) = .true.
                  mask_ct(i) = bnc + 1
               else
-                 !mask(i) = .true.
                  mask_ct(i) = bnc + 1
               end if
               
@@ -587,14 +616,11 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               call cross_product(pr_scr_plane, lamont, gr_scrape_norm)
               gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
 
-              print *, "GR SCR: ", gr_scrape_norm
-              print *, "GR scr size: ", sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
               !gr_scrape_norm = normal - dot_product(normal, pr_scr_plane)*pr_scr_plane
               !gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
 
               !That's RIGHT! GO FORWARD!
               gr_scrape_norm(1) = abs(gr_scrape_norm(1))
-              !print *, "GR SCR NORM: ", gr_scrape_norm
 
               lamont = 0.0 !dummy
               call cross_product(gr_scrape, gr_scrape_norm, lamont)
@@ -606,40 +632,20 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               !gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
               !gr_dir(1) = abs(gr_dir(1))
 
-              print *, "GR_DOR: ", gr_dir
               !just take absolute of x component here depending on grating tilt off z
 
-
-
-              !fuckken time for line density calc.
+              !line density calc.
               call cross_product(normal, gr_scrape, gr_tan)
               gr_tan = gr_tan/sqrt(dot_product(gr_tan, gr_tan))
-              print *, "GR TAN: ", gr_tan
               
               call cross_product(gr_scrape, gr_proj, gr_line_dir)
               gr_line_dir = gr_line_dir/sqrt(dot_product(gr_line_dir, gr_line_dir))
 
-              print *, "GR LINE DIR: ", gr_line_dir
               !gr_line_dir = gr_line_dir * (1.0/3600.0)*10**7
-              print *, "line len before: ", (1.0/grat_lines)*10**7
-              print *, "line len after: ", ((1.0/grat_lines)*10**7)/abs(dot_product(gr_tan, gr_line_dir))
-              print *, "X: ", rays(bnc + 1, i, 1)
 
-              
-
-              print *, dir(i, :)
-              
-              !normal(2) = -(normal(2))
-              
-              
-              call vecray(-1.0,  ((1.0/3600.0)*10**7)/abs(dot_product(gr_tan, gr_line_dir)), &
+              call vecray(-1.0,  ((1.0/grat_lines)*(10**7))/abs(dot_product(gr_tan, gr_line_dir)), &
                    1500.0, normal, gr_dir, dir(i, :), dir(i, :))
-              !dir(i,1) = -dir(i,1)
-              !dir(i,2) = -(dir(i,2))
-              !dir(i, :) = -dir(i, :)
-              print *, "OUT DIR: ", dir(i, :)
-              
-              
+
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 4.0) then
               mask(i) = .true.
               mask_ct(i) = bnc + 1
@@ -655,35 +661,21 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
            switch = .false.
         end if
      end do
+
      print *, "bounce", bnc
      bnc = bnc + 1
      if (switch .eqv. .true.) then
        exit
      end if
-     ! if (bnc == 5) then
-     !    stop
-     ! end if
      switch = .true.
-     !exit
-  end do
-  !print *, mask
 
-  ! do i = 1, hack - 1
-  !    if (i == hack - 1) then
-  !       !stop
-  !    else
-  !       print *, dot_product(testarr(i, 1:2), testarr(i + 1, 1:2))
-  !    end if
-  ! end do
+  end do
+
   print *, "finished loop"
 end subroutine fire_lazors
 
 
 subroutine vecray(m, d, l, n, gg, i, o)
-!subroutine vecray(m,d,l,n1,n2,n3,g1,g2,g3,i1,i2,i3,o1,o2,o3)
-
-  !implicit double precision (a-h,o-z)
-  !real*8 m,d,l,n1,n2,n3,i1,i2,i3,g1,g2,g3,o1,o2,o3
 
   implicit none
 
@@ -706,22 +698,8 @@ subroutine vecray(m, d, l, n, gg, i, o)
   
   g = gg !our copy to work with
 
-  if (sqrt(dot_product(g, g)) /= 1.0) then
-     print *, "bad grating line direction length: ", sqrt(dot_product(g, g))
-
-  else if (sqrt(dot_product(n, n)) /= 1.0) then
-     print *, "bad normal length: ", sqrt(dot_product(n, n))
-
-  else if (sqrt(dot_product(i, i)) /= 1.0) then
-     print *, "bad incoming length: ", sqrt(dot_product(i, i))
-     
-  end if
-
   goto 60
 50 continue
-  ! g1 = -g1
-  ! g2 = -g2
-  ! g3 = -g3
   g = -g
 60 continue
   
@@ -730,9 +708,6 @@ subroutine vecray(m, d, l, n, gg, i, o)
   xn1 = (n(1)*g(2) - n(2)*g(1))/a
   xn2 = g(3)*(n(1)*g(1) + n(2)*g(2))/a - a*n(3)
 
-  !xn1 = ( n1*g2 - n2*g1 )/a
-  !xn2 = g3*( n1*g1 + n2*g2 )/a  - a*n3
- 
   !  c	R is the transform from basic to xx coordinates
   !  c	in xx coordinates, g is in the z direction
   !  c	RT is the return transform
@@ -745,65 +720,23 @@ subroutine vecray(m, d, l, n, gg, i, o)
        -a*xn2 /)
   r(3, :) = g
 
-  ! r11 = ( xn2*g2 - xn1*g3*g1 )/a
-  ! r12 = -( xn2*g1 + xn1*g2*g3 )/a
-  ! r13 = xn1*a
-  ! r21 = (xn1*g2 + xn2*g3*g1)/a
-  ! r22 = ( -xn1*g1 + xn2*g2*g3 )/a
-  ! r23 = -a*xn2
-  ! r31 = g1
-  ! r32 = g2
-  ! r33 = g3
-
   rt = transpose(r)
-
-  ! rt(1,1) = r(1,1)
-  ! rt(1,2) = r(2,1)
-  ! rt(1,3) = r(3,1)
-  ! rt(2,1) = r(1,2)
-  ! rt(2,2) = r(2,2)
-  ! rt(2,3) = r(3,2)
-  ! rt(3,1) = r(1,3)
-  ! rt(3,2) = r(2,3)
-  ! rt(4,3) = r(3,3)
-
-  ! rt11 = r11
-  ! rt12 = r21
-  ! rt13 = r31
-  ! rt21 = r12
-  ! rt22 = r22
-  ! rt23 = r32
-  ! rt31 = r13
-  ! rt32 = r23
-  ! rt33 = r33
   
-  !xxi1 = i*r11 + i2*r12 + i3*r13
   xxi1 = dot_product(i, r(1, :))
 
   if (xxi1.lt.0) goto 50
 
-  !xxi3 = i1*r31 + i2*r32 + i3*r33
   xxi3 = dot_product(i, r(3, :))
   
-  !xxo = (/ (m*l/d) + xxi1, xxi3, sqrt ( 1.0 - xxo1*xxo1 - xxo3*xxo3 ) /)
   xxo(1) = (m*l/d) + xxi1
-  print *, "XXo1: ", xxo(1)
   xxo(3) = xxi3
   xxo(2) = sqrt( 1.0 - xxo(1)*xxo(1) - xxo(3)*xxo(3) )
-  print *, "XXo2: ", xxo(2)
-  ! xxo1 = (m*l/d) + xxi1
-  ! xxo3 = xxi3
-  ! xxo2 = sqrt ( 1.0 - xxo1*xxo1 - xxo3*xxo3 )
 
-  ! o1 = xxo1*rt11 + xxo2*rt12 + xxo3*rt13
-  ! o2 = xxo1*rt21 + xxo2*rt22 + xxo3*rt23
-  ! o3 = xxo1*rt31 + xxo2*rt32 + xxo3*rt33
+  ! o(1) = xxo(1)*rt(1,1) + xxo(2)*rt(1,2) + xxo(3)*rt(1,3)
+  ! o(2) = xxo(1)*rt(2,1) + xxo(2)*rt(2,2) + xxo(3)*rt(2,3)
+  ! o(3) = xxo(1)*rt(3,1) + xxo(2)*rt(3,2) + xxo(3)*rt(3,3)
 
-  o(1) = xxo(1)*rt(1,1) + xxo(2)*rt(1,2) + xxo(3)*rt(1,3)
-  o(2) = xxo(1)*rt(2,1) + xxo(2)*rt(2,2) + xxo(3)*rt(2,3)
-  o(3) = xxo(1)*rt(3,1) + xxo(2)*rt(3,2) + xxo(3)*rt(3,3)
-
-  !o = matmul(xxo, rt)
+  o = matmul(rt, xxo)
   o = o/sqrt(dot_product(o, o))
 
   return
