@@ -33,14 +33,14 @@ program raygun
   double precision, dimension(:, :), allocatable    :: dir
 
 
-  print *,"O HAI WORLDS!"
+  print *,"Raytracing time."
 
   print *, "PI: ", pi
 
   argc = IARGC()
 
   if(argc > 1) then
-     print *, "I CAN HAZ LESS ARGUMENTS PLOX?"
+     print *, "?!"
      stop
   endif
 
@@ -66,7 +66,7 @@ program raygun
   call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
        numoptics, par_pos, par_a, par_rad, par_in_rad, hyper_pos, &
        hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r, &
-       det_rad, grat_rad, grat_lines)
+       det_rad, grat_rad, grat_lines, wavel)
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wavel, beamrot)
 
@@ -82,12 +82,18 @@ program raygun
 contains
 
   subroutine init_rays()
-    logical :: check_bounds
+    logical                          :: check_bounds
     double precision, dimension(3,3) :: rotx, roty
-    double precision :: area, gridsize, xcount = 0, ycount = 0
-    logical :: done = .false.
-    integer :: rayct = 1, i
+    double precision                 :: area, gridsize, xcount = 0, ycount = 0
+    logical                          :: done = .false.
+    integer                          :: rayct = 1, i
+    double precision, dimension(13)   :: waves
 
+    waves = (/100.0,300.0,600.0,800.0,100.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
+    !waves = (/100.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
+    !waves = (/1499.925, 1500.0, 1500.075/)
+    !waves = (/1199.94, 1200.0, 1200.06/)
+    !waves = (/1999.9, 2000.0, 2000.1/)
 
     !rotation 
     rotx(1,:) = (/1.0, 0.0, 0.0/)
@@ -190,15 +196,18 @@ contains
        dir(i, :) = matmul(rotx, dir(i, :))
        dir(i, :) = dir(i, :)/sqrt(dot_product(dir(i, :), dir(i, :)))
 
-       if (rays(1, i, 1) >= 0 .and. rays(1, i, 2) >= 0) then
-          wavel(i) = 7500.0
-       else if (rays(1, i, 1) >= 0 .and. rays(1, i, 2) < 0) then
-          wavel(i) = 5900.0
-       else if (rays(1, i, 1) < 0 .and. rays(1, i, 2) < 0) then
-          wavel(i) = 5700.0
-       else
-          wavel(i) = 4950.0
-       end if
+       ! if (rays(1, i, 1) >= 0 .and. rays(1, i, 2) >= 0) then
+       !    wavel(i) = 7500.0
+       ! else if (rays(1, i, 1) >= 0 .and. rays(1, i, 2) < 0) then
+       !    wavel(i) = 5900.0
+       ! else if (rays(1, i, 1) < 0 .and. rays(1, i, 2) < 0) then
+       !    wavel(i) = 5700.0
+       ! else
+       !    wavel(i) = 4950.0
+       ! end if
+       
+       wavel(i) = waves(modulo(i,size(waves)) + 1)
+
     end do
 
   end subroutine init_rays
@@ -236,7 +245,7 @@ subroutine cross_product(x, y, answer)
   double precision, dimension(3), intent(INOUT) :: answer
 
   answer = (/ x(2)*y(3) - x(3)*y(2), &
-       -x(1)*y(3) - x(3)*y(1), &
+       x(3)*y(1) - x(1)*y(3), &
        x(1)*y(2) - x(2)*y(1) /)
 
 end subroutine cross_product
@@ -245,7 +254,7 @@ end subroutine cross_product
 subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
      numoptics, par_pos, par_a, par_rad, par_in_rad, hyper_pos, &
      hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r, &
-     det_rad, grat_rad, grat_lines)
+     det_rad, grat_rad, grat_lines, wavel)
 
   implicit none
 
@@ -257,6 +266,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision, intent(IN)                                :: grat_r, det_r, det_rad, grat_rad
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
+  double precision, dimension(numrays), intent(IN)            :: wavel
   integer, dimension(numrays), intent(INOUT)                  :: mask_ct
   double precision, dimension(2, 20)                          :: t_pos
   logical, dimension(numrays)     :: mask
@@ -270,7 +280,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision                :: p_bsquare, s_bsquare, t_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
-
+  double precision, dimension(3)  :: test = 0.0, test2 = 0.0
 
   t_pos = 0.0
   mask = .false.
@@ -280,14 +290,14 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
        -2.0*grat_pos(2), &
        2.0*(-1.7833300330000650 - grat_pos(3)) /)
 
-  gr_proj = gr_proj/sqrt(dot_product(gr_proj, gr_proj))
-  gr_proj = -gr_proj
-
+  gr_proj = -gr_proj/sqrt(dot_product(gr_proj, gr_proj))
+  !gr_proj = -gr_proj
+  !print *, gr_proj
+  !stop
   gr_scrape = (/ 0.0, -1.0, 0.0 /)
 
   call cross_product(gr_scrape, gr_proj, pr_scr_plane)
   pr_scr_plane = pr_scr_plane/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
-
 
   do
      do i = 1, numrays
@@ -540,7 +550,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
               t_pos(:, t_calcd) = (/ (-det_b - sqrt(d_bsquare))/(2.0*det_a), 4.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
-              if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. abs(rays(bnc, i, 1) + t_arr(1)) >= 0.5 .and. &
+              if (abs(rays(bnc, i, 1) + t_arr(1)) <= 5555.0 .and. &
+                   abs(rays(bnc, i, 1) + t_arr(1)) >= 0.5 .and. &
                    abs(rays(bnc, i, 2) + t_arr(2)) <= 5555.4) then
                  t_calcd = t_calcd + 1
               else
@@ -601,7 +612,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               else
                  mask_ct(i) = bnc + 1
               end if
-              
+
               !conceptual groove dir is (0, -1, 0) 
 
               !we calc a special normal for the groove direction,
@@ -612,10 +623,18 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
               !project normal onto pr_scr_plane
               call cross_product(normal, pr_scr_plane, lamont)
-              lamont = lamont/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
+              !lamont = lamont/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
+              lamont = lamont/sqrt(dot_product(lamont, lamont))
+              test = lamont
+              ! call cross_product(normal, (/-sin(32.68*3.14/180.0), 0.0, -cos(32.68*3.14/180.0)/), test)
+              ! test = test/sqrt(dot_product(test,test))
+
+              ! test(2) = -test(2)
+
               call cross_product(pr_scr_plane, lamont, gr_scrape_norm)
               gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
-
+              print *, gr_scrape_norm
+              !stop
               !gr_scrape_norm = normal - dot_product(normal, pr_scr_plane)*pr_scr_plane
               !gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
 
@@ -624,9 +643,15 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
               lamont = 0.0 !dummy
               call cross_product(gr_scrape, gr_scrape_norm, lamont)
-              lamont = lamont/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
+              lamont = lamont/sqrt(dot_product(lamont, lamont))
               call cross_product(gr_scrape_norm, lamont, gr_dir)
               gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
+              gr_dir = -gr_dir
+
+              print *, gr_dir
+              print *, test2
+              print *, test
+              print *,
 
               !gr_dir = gr_scrape - dot_product(gr_scrape, gr_scrape_norm)*gr_scrape_norm
               !gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
@@ -644,7 +669,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               !gr_line_dir = gr_line_dir * (1.0/3600.0)*10**7
 
               call vecray(-1.0,  ((1.0/grat_lines)*(10**7))/abs(dot_product(gr_tan, gr_line_dir)), &
-                   1500.0, normal, gr_dir, dir(i, :), dir(i, :))
+                   wavel(i), normal, test, dir(i, :), dir(i, :))
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 4.0) then
               mask(i) = .true.
@@ -701,6 +726,7 @@ subroutine vecray(m, d, l, n, gg, i, o)
   goto 60
 50 continue
   g = -g
+  print *, "WHAT?"
 60 continue
   
   a = sqrt(1.0 - g(3)*g(3))
@@ -762,6 +788,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   double precision, dimension(:, :), allocatable       :: points
   integer, dimension(:), allocatable                   :: color
   double precision                                     :: converted = 0.0, buffer_x = 0.0, buffer_y = 0.0
+  double precision                                     :: proj = 0.0
   character(len=10)                                    :: display
 
   xmin = lobound(1)
@@ -801,17 +828,34 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   !call plcol0(1)
   do i = 1, numrays
-     if (wavel(i) == 7500.0) then
+     if (wavel(i) <= 2000.0 .and. wavel(i) > 1800.0) then
+        !color(n) = 1
         call plcol0(1)
-     else if (wavel(i) == 5900.0) then
+     else if (wavel(i) <= 1800.0 .and. wavel(i) > 1600.0) then
+        !color(n) = 2
         call plcol0(2)
-     else if (wavel(i) == 5700.0) then
+     else if (wavel(i) <= 1600.0 .and. wavel(i) > 1400.0) then
+        !color(n) = 3
         call plcol0(3)
-     else if (wavel(i) == 4950.0) then
+     else if (wavel(i) <= 1400.0 .and. wavel(i) >= 0.0) then
+        !color(n) = 9
         call plcol0(9)
      else
         !wat?
      end if
+
+
+     ! if (wavel(i) == 7500.0) then
+     !    call plcol0(1)
+     ! else if (wavel(i) == 5900.0) then
+     !    call plcol0(2)
+     ! else if (wavel(i) == 5700.0) then
+     !    call plcol0(3)
+     ! else if (wavel(i) == 4950.0) then
+     !    call plcol0(9)
+     ! else
+     !    !wat?
+     ! end if
 
      call plpoin((/rays(1, i, 1)/), (/rays(1, i, 2)/), 95)
      !do j = 1, mask_ct(i) - 1
@@ -926,15 +970,21 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
   !print *, size(points)
   do i = 1, numrays
      if (mask_ct(i) == maxval(mask_ct(:))) then
-        points(n, :) = (/rays(maxval(mask_ct), i, 1), rays(maxval(mask_ct), i, 2)/)
 
-        if (wavel(i) == 7500.0) then
+        proj = atan(1.08/(-0.1 + 1.7833300330000650)) - &
+             atan(rays(maxval(mask_ct), i, 1)/(rays(maxval(mask_ct), i, 3) + 1.7833300330000650))
+        proj = -proj
+
+        !points(n, :) = (/rays(maxval(mask_ct), i, 1), rays(maxval(mask_ct), i, 2)/)
+        points(n, :) = (/proj, rays(maxval(mask_ct), i, 2)/)
+
+        if (wavel(i) <= 2000.0 .and. wavel(i) > 1800.0) then
            color(n) = 1
-        else if (wavel(i) == 5900.0) then
+        else if (wavel(i) <= 1800.0 .and. wavel(i) > 1600.0) then
            color(n) = 2
-        else if (wavel(i) == 5700.0) then
+        else if (wavel(i) <= 1600.0 .and. wavel(i) > 1400.0) then
            color(n) = 3
-        else if (wavel(i) == 4950.0) then
+        else if (wavel(i) <= 1400.0 .and. wavel(i) >= 0.0) then
            color(n) = 9
         else
            !wat?
@@ -990,7 +1040,7 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
   double precision                                     :: converted = 0.0, buffer_x = 0.0, buffer_y = 0.0
   double precision                                     :: xmin, xmax, ymin, ymax
   character(len=10)                                    :: display
-
+  double precision                                     :: proj
 
   print *, "Plotting Spot..."
   
@@ -1017,19 +1067,50 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
 
   do i = 1, numrays
      if (mask_ct(i) == maxval(mask_ct(:))) then
-        points(n, :) = (/rays(maxval(mask_ct), i, 1), rays(maxval(mask_ct), i, 2)/)
+        !points(n, :) = (/rays(maxval(mask_ct), i, 1), rays(maxval(mask_ct), i, 2)/)
 
-        if (wavel(i) == 7500.0) then
+        !center of detector (/-0.1/), (/1.08/) and z=0
+        !middle of grating piece 0, 0,  -1.7833300330000650
+        proj = atan(1.08/(-0.1 + 1.7833300330000650)) - &
+             atan(rays(maxval(mask_ct), i, 1)/(rays(maxval(mask_ct), i, 3) + 1.7833300330000650))
+        proj = -proj
+        points(n, :) = (/proj, rays(maxval(mask_ct), i, 2)/)
+        
+
+
+        ! if (wavel(i) == 7500.0) then
+        !    color(n) = 1
+        ! else if (wavel(i) == 5900.0) then
+        !    color(n) = 2
+        ! else if (wavel(i) == 5700.0) then
+        !    color(n) = 3
+        ! else if (wavel(i) == 4950.0) then
+        !    color(n) = 9
+        ! else
+        !    !what?
+        ! end if
+
+        if (wavel(i) <= 2000.0 .and. wavel(i) > 1800.0) then
            color(n) = 1
-        else if (wavel(i) == 5900.0) then
+        else if (wavel(i) <= 1800.0 .and. wavel(i) > 1600.0) then
            color(n) = 2
-        else if (wavel(i) == 5700.0) then
+        else if (wavel(i) <= 1600.0 .and. wavel(i) > 1400.0) then
            color(n) = 3
-        else if (wavel(i) == 4950.0) then
+        else if (wavel(i) <= 1400.0 .and. wavel(i) >= 1200.0) then
            color(n) = 9
         else
-           !what?
+           !wat?
         end if
+
+        ! if (wavel(i) < 1200.0) then
+        !    color(n) = 9
+        ! else if (wavel(i) == 1200.0) then
+        !    color(n) = 3
+        ! else if (wavel(i) > 1200.0) then
+        !    color(n) = 1
+        ! end if
+
+
         n = n + 1
      else
         !do not want
@@ -1045,16 +1126,17 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
   buffer_y = (maxval(points(:, 2)) - minval(points(:, 2)))*1.0e6/50
   call plsxax(5, 5)
   call plenv(xmin - buffer_x, xmax + buffer_x, &
-      ymin - buffer_y, ymax + buffer_y, just, axis)
+      ymin - buffer_y, ymax + buffer_y, 0, axis)
 
   converted = beamrot(2)*3600.0
   write (display, '(I4)') int(converted)
 
-  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "View from Detector " &
-       // trim(adjustl(display)) &
-       !// " 3000" &
-       // " Arcseconds Off Axis")
-
+  ! call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "View from Detector " &
+  !      // trim(adjustl(display)) &
+  !      !// " 3000" &
+  !      // " Arcseconds Off Axis")
+  call plprec(1, 2)
+  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "Lines at 1299.94, 1200, and 1200.06  #[0x212b]")
 
   do i = 1, good
      call plcol0(color(i))
@@ -1108,17 +1190,17 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
 
   print *, "file open"
 
-  allocate(r(n, count((good_wave <= 7500.0 .and. good_wave > 6200.0)), 3)) !r
-  allocate(o(n, count((good_wave <= 6200.0 .and. good_wave > 5900.0)), 3)) !o
-  allocate(y(n, count((good_wave <= 5900.0 .and. good_wave > 5700.0)), 3)) !y
-  allocate(g(n, count((good_wave <= 5700.0 .and. good_wave > 4950.0)), 3)) !g
-  allocate(b(n, count((good_wave <= 4950.0 .and. good_wave > 4500.0)), 3)) !b
-  allocate(v(n, count((good_wave <= 4500.0 .and. good_wave > 3800.0)), 3)) !v
+  allocate(r(n, count((good_wave <= 2000.0 .and. good_wave > 1867.0)), 3)) !r
+  allocate(o(n, count((good_wave <= 1867.0 .and. good_wave > 1734.0)), 3)) !o
+  allocate(y(n, count((good_wave <= 1734.0 .and. good_wave > 1601.0)), 3)) !y
+  allocate(g(n, count((good_wave <= 1601.0 .and. good_wave > 1468.0)), 3)) !g
+  allocate(b(n, count((good_wave <= 1468.0 .and. good_wave > 1335.0)), 3)) !b
+  allocate(v(n, count((good_wave <= 1335.0 .and. good_wave > 1200.0)), 3)) !v
   !print *, "hello?"
 
   j = 1
   do i = 1, good
-     if (good_wave(i) <= 7500.0 .and. good_wave(i) > 6200.0) then
+     if (good_wave(i) <= 2000.0 .and. good_wave(i) > 1867.0) then
         do k = 1, n
            r(k, j, :) = good_rays(k, i, :)
         end do
@@ -1129,7 +1211,7 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
 
   j = 1
   do i = 1, good
-     if (good_wave(i) <= 6200.0 .and. good_wave(i) > 5900.0) then
+     if (good_wave(i) <= 1867.0 .and. good_wave(i) > 1734.0) then
         do k = 1, n
            o(k, j, :) = good_rays(k, i, :)
         end do
@@ -1139,7 +1221,7 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
 
   j = 1
   do i = 1, good
-     if (good_wave(i) <= 5900.0 .and. good_wave(i) > 5700.0) then
+     if (good_wave(i) <= 1734.0 .and. good_wave(i) > 1601.0) then
         do k = 1, n
            y(k, j, :) = good_rays(k, i, :)
         end do
@@ -1149,7 +1231,7 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
 
   j = 1
   do i = 1, good
-     if (good_wave(i) <= 5700.0 .and. good_wave(i) > 4950.0) then
+     if (good_wave(i) <= 1601.0 .and. good_wave(i) > 1468.0) then
         do k = 1, n
            g(k, j, :) = good_rays(k, i, :)
         end do
@@ -1160,7 +1242,7 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
 
   j = 1
   do i = 1, good
-     if (good_wave(i) <= 4950.0 .and. good_wave(i) > 4500.0) then
+     if (good_wave(i) <= 1468.0 .and. good_wave(i) > 1335.0) then
         do k = 1, n
            b(k, j, :) = good_rays(k, i, :)
         end do
@@ -1170,7 +1252,7 @@ subroutine xmlify(rays, numrays, mask_ct, name, wavel)
 
   j = 1
   do i = 1, good
-     if (good_wave(i) <= 4500.0 .and. good_wave(i) > 3800.0) then
+     if (good_wave(i) <= 1335.0 .and. good_wave(i) > 1200.0) then
         do k = 1, n
            v(k, j, :) = good_rays(k, i, :)
         end do
