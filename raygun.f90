@@ -87,9 +87,9 @@ contains
     double precision                 :: area, gridsize, xcount = 0, ycount = 0
     logical                          :: done = .false.
     integer                          :: rayct = 1, i
-    double precision, dimension(13)   :: waves
+    double precision, dimension(9)   :: waves
 
-    waves = (/100.0,300.0,600.0,800.0,100.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
+    waves = (/1200.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
     !waves = (/100.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
     !waves = (/1499.925, 1500.0, 1500.075/)
     !waves = (/1199.94, 1200.0, 1200.06/)
@@ -280,7 +280,6 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision                :: p_bsquare, s_bsquare, t_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
-  double precision, dimension(3)  :: test = 0.0, test2 = 0.0
 
   t_pos = 0.0
   mask = .false.
@@ -621,43 +620,32 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               
               !we use gr_proj for projection dir, and gr_scrape for groove line direction.
 
-              !project normal onto pr_scr_plane
-              call cross_product(normal, pr_scr_plane, lamont)
-              !lamont = lamont/sqrt(dot_product(pr_scr_plane, pr_scr_plane))
-              lamont = lamont/sqrt(dot_product(lamont, lamont))
-              test = lamont
+              call cross_product(normal, pr_scr_plane, gr_dir)
+              gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
+
+              !lamont = lamont/sqrt(dot_product(lamont, lamont))
+              !test = lamont
+
               ! call cross_product(normal, (/-sin(32.68*3.14/180.0), 0.0, -cos(32.68*3.14/180.0)/), test)
               ! test = test/sqrt(dot_product(test,test))
 
-              ! test(2) = -test(2)
+              ! call cross_product(pr_scr_plane, lamont, gr_scrape_norm)
+              ! gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
 
-              call cross_product(pr_scr_plane, lamont, gr_scrape_norm)
-              gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
-              print *, gr_scrape_norm
-              !stop
-              !gr_scrape_norm = normal - dot_product(normal, pr_scr_plane)*pr_scr_plane
-              !gr_scrape_norm = gr_scrape_norm/sqrt(dot_product(gr_scrape_norm, gr_scrape_norm))
+              ! !That's RIGHT! GO FORWARD!
+              ! gr_scrape_norm(1) = abs(gr_scrape_norm(1))
 
-              !That's RIGHT! GO FORWARD!
-              gr_scrape_norm(1) = abs(gr_scrape_norm(1))
-
-              lamont = 0.0 !dummy
-              call cross_product(gr_scrape, gr_scrape_norm, lamont)
-              lamont = lamont/sqrt(dot_product(lamont, lamont))
-              call cross_product(gr_scrape_norm, lamont, gr_dir)
-              gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
-              gr_dir = -gr_dir
-
-              print *, gr_dir
-              print *, test2
-              print *, test
-              print *,
+              ! lamont = 0.0 !dummy
+              ! call cross_product(gr_scrape, gr_scrape_norm, lamont)
+              ! lamont = lamont/sqrt(dot_product(lamont, lamont))
+              ! call cross_product(gr_scrape_norm, lamont, gr_dir)
+              ! gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
+              ! gr_dir = -gr_dir
 
               !gr_dir = gr_scrape - dot_product(gr_scrape, gr_scrape_norm)*gr_scrape_norm
               !gr_dir = gr_dir/sqrt(dot_product(gr_dir, gr_dir))
               !gr_dir(1) = abs(gr_dir(1))
 
-              !just take absolute of x component here depending on grating tilt off z
 
               !line density calc.
               call cross_product(normal, gr_scrape, gr_tan)
@@ -669,7 +657,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               !gr_line_dir = gr_line_dir * (1.0/3600.0)*10**7
 
               call vecray(-1.0,  ((1.0/grat_lines)*(10**7))/abs(dot_product(gr_tan, gr_line_dir)), &
-                   wavel(i), normal, test, dir(i, :), dir(i, :))
+                   wavel(i), normal, gr_dir, dir(i, :), dir(i, :))
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 4.0) then
               mask(i) = .true.
@@ -1076,39 +1064,25 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
         proj = -proj
         points(n, :) = (/proj, rays(maxval(mask_ct), i, 2)/)
         
-
-
-        ! if (wavel(i) == 7500.0) then
+        ! if (wavel(i) <= 2000.0 .and. wavel(i) > 1800.0) then
         !    color(n) = 1
-        ! else if (wavel(i) == 5900.0) then
+        ! else if (wavel(i) <= 1800.0 .and. wavel(i) > 1600.0) then
         !    color(n) = 2
-        ! else if (wavel(i) == 5700.0) then
+        ! else if (wavel(i) <= 1600.0 .and. wavel(i) > 1400.0) then
         !    color(n) = 3
-        ! else if (wavel(i) == 4950.0) then
+        ! else if (wavel(i) <= 1400.0 .and. wavel(i) >= 1200.0) then
         !    color(n) = 9
         ! else
-        !    !what?
+        !    !wat?
         ! end if
 
-        if (wavel(i) <= 2000.0 .and. wavel(i) > 1800.0) then
-           color(n) = 1
-        else if (wavel(i) <= 1800.0 .and. wavel(i) > 1600.0) then
-           color(n) = 2
-        else if (wavel(i) <= 1600.0 .and. wavel(i) > 1400.0) then
-           color(n) = 3
-        else if (wavel(i) <= 1400.0 .and. wavel(i) >= 1200.0) then
+        if (wavel(i) < 2000.0) then
            color(n) = 9
-        else
-           !wat?
+        else if (wavel(i) == 2000.0) then
+           color(n) = 3
+        else if (wavel(i) > 2000.0) then
+           color(n) = 1
         end if
-
-        ! if (wavel(i) < 1200.0) then
-        !    color(n) = 9
-        ! else if (wavel(i) == 1200.0) then
-        !    color(n) = 3
-        ! else if (wavel(i) > 1200.0) then
-        !    color(n) = 1
-        ! end if
 
 
         n = n + 1
@@ -1136,7 +1110,8 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
   !      !// " 3000" &
   !      // " Arcseconds Off Axis")
   call plprec(1, 2)
-  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "Lines at 1299.94, 1200, and 1200.06  #[0x212b]")
+  call pllab("X Axis (#gmm)", "Y Axis (#gmm)", "Lines at 1999.9, 2000, and 2000.1  #[0x212b]")
+    !waves = (/1999.9, 2000.0, 2000.1/)
 
   do i = 1, good
      call plcol0(color(i))
