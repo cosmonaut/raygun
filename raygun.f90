@@ -1,6 +1,8 @@
 program raygun
-
+  !http://jblevins.org/mirror/amiller/ -- quartic solver found here.
   use xml_data_config
+  !use quart
+  !USE constants_NSWC
 
   implicit none
 
@@ -31,6 +33,15 @@ program raygun
   integer, dimension(:), allocatable                :: mask_ct
   double precision, dimension(:), allocatable       :: wavel
   double precision, dimension(:, :), allocatable    :: dir
+
+  ! double precision :: a(0:4)
+  ! complex :: z(4)
+
+  ! z = 0.0
+  ! a = (/1.0, 1.0, 1.0, 1.0, 1.0/)
+
+  ! call qtcrt(a, z)
+  ! print *, a, z
 
 
   print *,"Raytracing time."
@@ -256,6 +267,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
      hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r, &
      det_rad, grat_rad, grat_lines, wavel)
 
+  use quart
   implicit none
 
   integer, intent(IN)                                         :: numrays, numoptics
@@ -280,7 +292,9 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision                :: p_bsquare, s_bsquare, t_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
-
+  !double precision :: a(0:4)
+  !complex          :: z(4)
+    !               A(1) + A(2)*Z + ... + A(5)*Z**4
   t_pos = 0.0
   mask = .false.
   mask_ct = 1
@@ -290,9 +304,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
        2.0*(-1.7833300330000650 - grat_pos(3)) /)
 
   gr_proj = -gr_proj/sqrt(dot_product(gr_proj, gr_proj))
-  !gr_proj = -gr_proj
-  !print *, gr_proj
-  !stop
+
   gr_scrape = (/ 0.0, -1.0, 0.0 /)
 
   call cross_product(gr_scrape, gr_proj, pr_scr_plane)
@@ -325,6 +337,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
 
            s_bsquare = (sec_b**2 - 4.0*sec_a*sec_c)
 
+           !sphere
            ter_a = ( dir(i, 1)**2 + dir(i, 2)**2 + dir(i, 3)**2 )
 
            ter_b = 2.0*( rays(bnc, i, 1)*dir(i, 1) - dir(i, 1)*grat_pos(1) &
@@ -335,6 +348,8 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
                 + rays(bnc, i, 3)**2 + grat_pos(3)**2 -2.0*( rays(bnc, i, 1)*grat_pos(1) &
                 + rays(bnc, i, 2)*grat_pos(2) + rays(bnc, i, 3)*grat_pos(3) )&
                 - grat_r**2
+
+           !call qtcrt(a, z)
 
            t_bsquare = ter_b**2 - 4.0*ter_a*ter_c
 
