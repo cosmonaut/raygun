@@ -77,7 +77,7 @@ program raygun
   call fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
        numoptics, par_pos, par_a, par_rad, par_in_rad, hyper_pos, &
        hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r, &
-       det_rad, grat_rad, grat_lines, wavel)
+       det_rad, grat_rad, grat_lines, wavel, grat_a)
 
   call plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wavel, beamrot)
 
@@ -265,7 +265,7 @@ end subroutine cross_product
 subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
      numoptics, par_pos, par_a, par_rad, par_in_rad, hyper_pos, &
      hyper_rad, hyper_a, hyper_c, grat_pos, grat_r, det_pos, det_r, &
-     det_rad, grat_rad, grat_lines, wavel)
+     det_rad, grat_rad, grat_lines, wavel, grat_a)
 
   use quart
   implicit none
@@ -276,6 +276,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision, intent(IN)                                :: par_a, hyper_a, hyper_c, par_rad 
   double precision, intent(IN)                                :: hyper_rad, par_in_rad, grat_lines
   double precision, intent(IN)                                :: grat_r, det_r, det_rad, grat_rad
+  double precision, intent(IN)                                :: grat_a
   double precision, dimension(100, numrays, 3), intent(INOUT) :: rays
   double precision, dimension(numrays, 3), intent(INOUT)      :: dir
   double precision, dimension(numrays), intent(IN)            :: wavel
@@ -284,7 +285,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   logical, dimension(numrays)     :: mask
   double precision, dimension(3)  :: t_arr = 0.0, normal = 0.0, gr_proj = 0.0
   double precision, dimension(3)  :: gr_scrape = 0.0, gr_dir = 0.0, gr_scrape_norm = 0.0, pr_scr_plane = 0.0
-  double precision, dimension(3)  :: gr_tan = 0.0, gr_tan_proj = 0.0, gr_line_dir = 0.0, lamont = 0.0
+  double precision, dimension(3)  :: gr_tan = 0.0, gr_tan_proj = 0.0, gr_line_dir = 0.0
   double precision                :: prim_a, prim_b, prim_c
   double precision                :: sec_a, sec_b, sec_c
   double precision                :: ter_a, ter_b, ter_c
