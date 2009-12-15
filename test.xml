@@ -22,7 +22,8 @@
 <hyper_a>1.1457070964337681</hyper_a>
 <hyper_c>1.55</hyper_c>
 <grat_pos>1.0800000000000001 0.0 -0.1</grat_pos>
-<grat_r>2.0</grat_r>
+<!-- <grat_r>0.4</grat_r> -->
+<grat_r>0.31666996699993499</grat_r>
 <grat_a>1.6833300330000651</grat_a>
 <grat_rad>0.15</grat_rad>
 <grat_lines>3600.0</grat_lines>

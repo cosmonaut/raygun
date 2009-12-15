@@ -1,8 +1,6 @@
 program raygun
   !http://jblevins.org/mirror/amiller/ -- quartic solver found here.
   use xml_data_config
-  !use quart
-  !USE constants_NSWC
 
   implicit none
 
@@ -33,16 +31,6 @@ program raygun
   integer, dimension(:), allocatable                :: mask_ct
   double precision, dimension(:), allocatable       :: wavel
   double precision, dimension(:, :), allocatable    :: dir
-
-  ! double precision :: a(0:4)
-  ! complex :: z(4)
-
-  ! z = 0.0
-  ! a = (/1.0, 1.0, 1.0, 1.0, 1.0/)
-
-  ! call qtcrt(a, z)
-  ! print *, a, z
-
 
   print *,"Raytracing time."
 
@@ -98,12 +86,12 @@ contains
     double precision                 :: area, gridsize, xcount = 0, ycount = 0
     logical                          :: done = .false.
     integer                          :: rayct = 1, i
-    double precision, dimension(9)   :: waves
+    double precision, dimension(3)   :: waves
 
-    waves = (/1200.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
+    !waves = (/1200.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
     !waves = (/100.0,1300.0,1400.0,1500.0,1600.0,1700.0,1800.0,1900.0,2000.0/)
     !waves = (/1499.925, 1500.0, 1500.075/)
-    !waves = (/1199.94, 1200.0, 1200.06/)
+    waves = (/1199.94, 1200.0, 1200.06/)
     !waves = (/1999.9, 2000.0, 2000.1/)
 
     !rotation 
@@ -259,6 +247,8 @@ subroutine cross_product(x, y, answer)
        x(3)*y(1) - x(1)*y(3), &
        x(1)*y(2) - x(2)*y(1) /)
 
+  return
+
 end subroutine cross_product
 
 
@@ -293,9 +283,12 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
   double precision                :: p_bsquare, s_bsquare, t_bsquare, d_bsquare
   integer                         :: i, bnc = 1, t_calcd = 1
   logical                         :: switch
-  !double precision :: a(0:4)
-  !complex          :: z(4)
-    !               A(1) + A(2)*Z + ... + A(5)*Z**4
+  double precision :: a(0:4)
+  complex          :: z(4)
+  
+  z = 0.0
+  a = 0.0
+
   t_pos = 0.0
   mask = .false.
   mask_ct = 1
@@ -339,20 +332,288 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
            s_bsquare = (sec_b**2 - 4.0*sec_a*sec_c)
 
            !sphere
-           ter_a = ( dir(i, 1)**2 + dir(i, 2)**2 + dir(i, 3)**2 )
+           ! ter_a = ( dir(i, 1)**2 + dir(i, 2)**2 + dir(i, 3)**2 )
 
-           ter_b = 2.0*( rays(bnc, i, 1)*dir(i, 1) - dir(i, 1)*grat_pos(1) &
-                + rays(bnc, i, 2)*dir(i, 2) - dir(i, 2)*grat_pos(2) &
-                + rays(bnc, i, 3)*dir(i, 3) - dir(i, 3)*grat_pos(3))
+           ! ter_b = 2.0*( rays(bnc, i, 1)*dir(i, 1) - dir(i, 1)*grat_pos(1) &
+           !      + rays(bnc, i, 2)*dir(i, 2) - dir(i, 2)*grat_pos(2) &
+           !      + rays(bnc, i, 3)*dir(i, 3) - dir(i, 3)*grat_pos(3))
            
-           ter_c = rays(bnc, i, 1)**2 + grat_pos(1)**2 + rays(bnc, i, 2)**2 + grat_pos(2)**2 &
-                + rays(bnc, i, 3)**2 + grat_pos(3)**2 -2.0*( rays(bnc, i, 1)*grat_pos(1) &
-                + rays(bnc, i, 2)*grat_pos(2) + rays(bnc, i, 3)*grat_pos(3) )&
-                - grat_r**2
+           ! ter_c = rays(bnc, i, 1)**2 + grat_pos(1)**2 + rays(bnc, i, 2)**2 + grat_pos(2)**2 &
+           !      + rays(bnc, i, 3)**2 + grat_pos(3)**2 -2.0*( rays(bnc, i, 1)*grat_pos(1) &
+           !      + rays(bnc, i, 2)*grat_pos(2) + rays(bnc, i, 3)*grat_pos(3) )&
+           !      - grat_r**2
 
-           !call qtcrt(a, z)
+           !Format for the numerical quartic solver:
+           !A(1) + A(2)*Z + ... + A(5)*Z**4 <-- this actually runs 0 -> 4
 
-           t_bsquare = ter_b**2 - 4.0*ter_a*ter_c
+           ! a(0) = grat_a**4 - 2.0*(grat_a**2)*grat_r**2 + grat_r**4 - 2.0*(grat_a**2)*rays(bnc, i, 1)**2 &
+           !      - 2.0*(grat_r**2)*rays(bnc, i, 1)**2 + rays(bnc, i, 1)**4 + & 
+           !      4.0*(grat_a**2)*rays(bnc, i, 1)*grat_pos(1) + 4.0*(grat_r**2)*rays(bnc, i, 1)*grat_pos(1) &
+           !      - 4.0*(rays(bnc, i, 1)**3)*grat_pos(1) - 2.0*
+
+           a(0) = grat_a**4 &
+                + grat_r**4 &
+                - 2.0*(grat_r**2)*(rays(bnc, i ,1)**2 &
+                - 2.0*rays(bnc, i, 1)*grat_pos(1) &
+                + grat_pos(1)**2 &
+                - rays(bnc, i, 2)**2 &
+                + 2.0*rays(bnc, i, 2)*grat_pos(2) &
+                - grat_pos(2)**2 &
+                + rays(bnc, i, 3)**2 &
+                - 2.0*rays(bnc, i, 3)*grat_pos(3) &
+                + grat_pos(3)) &
+                + (rays(bnc, i, 1)**2 &
+                - 2.0*rays(bnc, i, 1)*grat_pos(1) &
+                + grat_pos(1)**2 &
+                + rays(bnc, i, 2)**2 &
+                - 2.0*rays(bnc, i, 1)*grat_pos(2) &
+                + grat_pos(2)**2 &
+                + rays(bnc, i, 3)**2 &
+                - 2.0*rays(bnc, i, 3)*grat_pos(3) &
+                + grat_pos(3)**2)**2 &
+                - 2.0*(grat_a**2)*(grat_r**2 &
+                + rays(bnc, i, 1)**2 &
+                - 2.0*rays(bnc, i, 1)*grat_pos(1) &
+                + grat_pos(1)**2 &
+                + rays(bnc, i, 2)**2 &
+                - 2.0*rays(bnc, i, 2)*grat_pos(2) &
+                + grat_pos(2)**2 &
+                + rays(bnc, i, 3)**2 &
+                - 2.0*rays(bnc, i, 3)*grat_pos(3) &
+                + grat_pos(3)**2)
+                
+
+           ! a(0) = 2.0*grat_r**4 &
+           !      + 2.0*rays(bnc, i, 1)**4 &
+           !      - 8.0*(rays(bnc, i, 1)**3)*grat_pos(1) &
+           !      + 12.0*(rays(bnc, i, 1)**2)*grat_pos(1)**2 &
+           !      - 8.0*rays(bnc, i, 1)*grat_pos(1)**3 &
+           !      + 2.0*grat_pos(1)**4 &
+           !      + 4.0*(rays(bnc, i, 1)**2)*rays(bnc, i, 2)**2 &
+           !      - 8.0*rays(bnc, i, 1)*grat_pos(1)*rays(bnc, i, 2)**2 &
+           !      + 4.0*(grat_pos(1)**2)*rays(bnc, i, 2)**2 &
+           !      + 2.0*rays(bnc, i, 2)**4 &
+           !      - 8.0*(rays(bnc, i, 1)**2)*rays(bnc, i, 2)*grat_pos(2) &
+           !      + 16.0*rays(bnc, i, 1)*grat_pos(1)*rays(bnc, i, 2)*grat_pos(2) &
+           !      - 8.0*(grat_pos(1)**2)*rays(bnc, i, 2)*grat_pos(2) &
+           !      - 8.0*(rays(bnc, i, 2)**3)*grat_pos(2) &
+           !      + 4.0*(rays(bnc, i, 1)**2)*grat_pos(2)**2 &
+           !      - 8.0*rays(bnc, i, 1)*grat_pos(1)*grat_pos(2)**2 &
+           !      + 4.0*(grat_pos(1)**2)*grat_pos(2)**2 &
+           !      + 12.0*(rays(bnc, i, 2)**2)*grat_pos(2)**2 &
+           !      - 8.0*rays(bnc, i, 2)*grat_pos(2)**3 &
+           !      + 2.0*grat_pos(2)**4 &
+           !      + 4.0*(rays(bnc, i, 1)**2)*rays(bnc, i, 3)**2 &
+           !      - 8.0*rays(bnc, i, 1)*grat_pos(1)*rays(bnc, i, 3)**2 &
+           !      + 4.0*(grat_pos(1)**2)*rays(bnc, i, 3)**2 &
+           !      + 4.0*(rays(bnc, i, 2)**2)*rays(bnc, i, 3)**2 &
+           !      - 8.0*rays(bnc, i, 2)*grat_pos(2)*rays(bnc, i, 3)**2 &
+           !      + 4.0*(grat_pos(2)**2)*(rays(bnc, i, 3)**2) &
+           !      + rays(bnc, i, 3)**4 &
+           !      - 4.0*(grat_r**2)*(rays(bnc, i, 1)**2 &
+           !      - 2.0*rays(bnc, i, 1)*grat_pos(1) &
+           !      + grat_pos(1)**2 &
+           !      - rays(bnc, i, 2)**2 &
+           !      + 2.0*rays(bnc, i, 2)*grat_pos(2) &
+           !      - grat_pos(2)**2 &
+           !      + rays(bnc, i, 3)**2) &
+           !      - 4.0*(grat_a**2)*(grat_r**2 &
+           !      + rays(bnc, i, 1)**2 &
+           !      - 2.0*rays(bnc, i , 1)*grat_pos(1) &
+           !      + grat_pos(1)**2 &
+           !      + rays(bnc, i, 2)**2 &
+           !      - 2.0*rays(bnc, i, 2)*grat_pos(2) &
+           !      + grat_pos(2)**2 &
+           !      + rays(bnc, i, 3)**2) &
+           !      + (grat_a**4)*(1.0 + rays(bnc, i, 3)**4)
+
+           a(1) = -4.0*((grat_a**2)*(rays(bnc, i, 1)*dir(i, 1) &
+                - dir(i, 1)*grat_pos(1) &
+                + rays(bnc, i, 2)*dir(i, 2) &
+                - dir(i, 2)*grat_pos(2) &
+                + rays(bnc, i, 3)*dir(i, 3) &
+                - dir(i, 3)*grat_pos(3)) &
+                + (grat_r**2)*(rays(bnc, i, 1)*dir(i, 1) &
+                - dir(i, 1)*grat_pos(1) &
+                - rays(bnc, i, 2)*dir(i, 2) &
+                + dir(i, 2)*grat_pos(2) &
+                + rays(bnc, i, 3)*dir(i, 3) &
+                - dir(i, 3)*grat_pos(3)) &
+                - (rays(bnc, i, 1)*dir(i, 1) &
+                - dir(i, 1)*grat_pos(1) &
+                + rays(bnc, i, 2)*dir(i, 2) &
+                - dir(i, 2)*grat_pos(2) &
+                + rays(bnc, i, 3)*dir(i, 3) &
+                - dir(i, 3)*grat_pos(3))*(rays(bnc, i, 1)**2 &
+                - 2.0*rays(bnc, i, 1)*grat_pos(1) &
+                + grat_pos(1)**2 &
+                + rays(bnc, i, 2)**2 &
+                - 2.0*rays(bnc, i, 2)*grat_pos(2) &
+                + grat_pos(2)**2 &
+                + rays(bnc, i, 3)**2 &
+                - 2.0*rays(bnc, i, 3)*grat_pos(3) &
+                + grat_pos(3)**2))
+
+           ! a(1) = -4.0*((grat_a**2)*(rays(bnc, i, 1)*dir(i, 1) &
+           !      - dir(i, 1)*grat_pos(1) &
+           !      + rays(bnc, i, 2)*dir(i, 2) &
+           !      - dir(i, 2)*grat_pos(2) &
+           !      + rays(bnc, i, 3)*dir(i, 3) &
+           !      - dir(i, 3)*grat_pos(3)) &
+           !      + (grat_r**2)*(rays(bnc, i, 1)*dir(i, 1) &
+           !      - dir(i, 1)*grat_pos(1) &
+           !      - rays(bnc, i, 2)*dir(i, 2) &
+           !      + dir(i, 2)*grat_pos(2) &
+           !      + rays(bnc, i, 3)*dir(i, 3) &
+           !      - dir(i, 3)*grat_pos(3)) &
+           !      - (rays(bnc, i, 1)*dir(i, 1) &
+           !      - dir(i, 1)*grat_pos(1) &
+           !      + rays(bnc, i, 2)*dir(i, 2) &
+           !      - dir(i, 2)*grat_pos(2) &
+           !      + rays(bnc, i, 3)*dir(i, 3) &
+           !      - dir(i, 3)*grat_pos(3))*(rays(bnc, i, 1)**2 &
+           !      - 2.0*rays(bnc, i , 1)*grat_pos(1) &
+           !      + grat_pos(1)**2 &
+           !      + rays(bnc, i, 2)**2 &
+           !      - 2.0*rays(bnc, i, 2)*grat_pos(2) &
+           !      + grat_pos(2)**2 &
+           !      + rays(bnc, i, 3)**2 &
+           !      - 2.0*rays(bnc, i, 3)*grat_pos(3) &
+           !      + grat_pos(3)**2))
+
+           a(2) = 2.0*(3.0*(rays(bnc, i, 1)**2)*dir(i, 1)**2 &
+                - 6.0*rays(bnc, i, 1)*(dir(i, 1)**2)*grat_pos(1) &
+                + 3.0*(dir(i, 1)**2)*grat_pos(1)**2 &
+                + (dir(i, 1)**2)*rays(bnc, i, 2)**2 &
+                + 4.0*rays(bnc, i, 1)*dir(i, 1)*rays(bnc, i, 2)*dir(i, 2) &
+                - 4.0*dir(i, 1)*grat_pos(1)*rays(bnc, i, 2)*dir(i, 2) &
+                + (rays(bnc, i, 1)**2)*dir(i, 2)**2 &
+                - 2.0*rays(bnc, i, 1)*grat_pos(1)*dir(i, 2)**2 &
+                + (grat_pos(1)**2)*dir(i, 2)**2 &
+                + 3.0*(rays(bnc, i, 2)**2)*dir(i, 2)**2 &
+                + (dir(i, 1)**2)*rays(bnc, i, 3)**2 &
+                + (dir(i, 2)**2)*rays(bnc, i, 3)**2 &
+                + 4.0*rays(bnc, i, 1)*dir(i, 1)*rays(bnc, i, 3)*dir(i, 3) &
+                - 4.0*dir(i, 1)*grat_pos(1)*rays(bnc, i, 3)*dir(i, 3) &
+                + 4.0*rays(bnc, i, 2)*dir(i, 2)*rays(bnc, i, 3)*dir(i, 3) &
+                + (rays(bnc, i, 1)**2)*dir(i, 3)**2 &
+                - 2.0*rays(bnc, i, 1)*grat_pos(1)*dir(i, 3)**2 &
+                + (grat_pos(1)**2)*dir(i, 3)**2 &
+                + (rays(bnc, i, 2)**2)*dir(i, 3)**2 &
+                + 3.0*(rays(bnc, i, 3)**2)*dir(i, 3)**2 &
+                - (grat_r**2)*(dir(i, 1)**2 &
+                - dir(i, 2)**2 &
+                + dir(i, 3)**2) &
+                - (grat_a**2)*(dir(i, 1)**2 &
+                + dir(i, 2)**2 &
+                + dir(i, 3)**2) &
+                - 2.0*(dir(i, 1)**2)*rays(bnc, i, 3)*grat_pos(3) &
+                - 2.0*(dir(i, 2)**2)*rays(bnc, i, 3)*grat_pos(3) &
+                - 4.0*rays(bnc, i, 1)*dir(i, 1)*dir(i, 3)*grat_pos(3) &
+                + 4.0*dir(i, 1)*grat_pos(1)*dir(i, 3)*grat_pos(3) &
+                - 4.0*rays(bnc, i, 2)*dir(i, 2)*dir(i, 3)*grat_pos(3) &
+                - 6.0*rays(bnc, i, 3)*(dir(i, 3)**2)*grat_pos(3) &
+                + (dir(i, 1)**2)*grat_pos(3)**2 &
+                + (dir(i, 2)**2)*grat_pos(3)**2 &
+                + 3.0*(dir(i, 3)**2)*grat_pos(3)**2)
+
+
+           ! a(2) = 2.0*(3.0*(rays(bnc, i, 1)**2)*dir(i, 1)**2 &
+           !      - 6.0*rays(bnc, i, 1)*(dir(i, 1)**2)*grat_pos(1) &
+           !      + 3.0*(dir(i, 1)**2)*grat_pos(1)**2 &
+           !      + (dir(i, 1)**2)*rays(bnc, i, 2)**2 &
+           !      + 4.0*rays(bnc, i, 1)*dir(i, 1)*rays(bnc, i, 2)*dir(i, 2) &
+           !      - 4.0*dir(i, 1)*grat_pos(1)*rays(bnc, i, 2)*dir(i,2) &
+           !      + (rays(bnc, i, 1)**2)*dir(i, 2)**2 &
+           !      - 2.0*rays(bnc, i, 1)*grat_pos(1)*dir(i, 2)**2 &
+           !      + (grat_pos(1)**2)*dir(i, 2)**2 &
+           !      + 3.0*(rays(bnc, i, 2)**2)*dir(i, 2)**2 &
+           !      - 2.0*(dir(i, 1)**2)*rays(bnc, i, 2)*grat_pos(2) &
+           !      - 4.0*rays(bnc, i, 1)*dir(i, 1)*dir(i, 2)*grat_pos(2) &
+           !      + 4.0*dir(i, 1)*grat_pos(1)*dir(i, 2)*grat_pos(2) & 
+           !      - 6.0*rays(bnc, i, 2)*(dir(i, 2)**2)*grat_pos(2) &
+           !      + (dir(i, 1)**2)*grat_pos(2)**2 &
+           !      + 3.0*(dir(i, 2)**2)*grat_pos(2)**2 &
+           !      + (dir(i, 1)**2)*rays(bnc, i, 3)**2 &
+           !      + (dir(i, 2)**2)*rays(bnc, i, 3)**2 &
+           !      + 4.0*rays(bnc, i, 1)*dir(i, 1)*rays(bnc, i, 3)*dir(i, 3) &
+           !      - 4.0*dir(i, 1)*grat_pos(1)*rays(bnc, i, 3)*dir(i, 3) &
+           !      + 4.0*rays(bnc, i, 2)*dir(i, 2)*rays(bnc, i, 3)*dir(i, 3) &
+           !      - 4.0*dir(i, 2)*grat_pos(2)*rays(bnc, i, 3)*dir(i, 3) &
+           !      + (rays(bnc, i, 1)**2)*dir(i, 3)**2 &
+           !      - 2.0*rays(bnc, i, 1)*grat_pos(1)*dir(i,3)**2 &
+           !      + (grat_pos(1)**2)*dir(i, 3)**2 &
+           !      + (rays(bnc, i, 2)**2)*dir(i, 3)**2 &
+           !      - 2.0*rays(bnc, i, 2)*grat_pos(2)*dir(i, 3)**2 &
+           !      + (grat_pos(2)**2)*dir(i, 3)**2 &
+           !      + 3.0*(rays(bnc, i, 3)**2)*(dir(i, 3)**2) &
+           !      - (grat_r**2)*(dir(i, 1)**2 &
+           !      - dir(i, 2)**2 &
+           !      + dir(i, 3)**2) &
+           !      - (grat_a**2)*(dir(i, 1)**2 &
+           !      + dir(i, 2)**2 &
+           !      + dir(i, 3)**2) &
+           !      - 2.0*(dir(i, 1)**2)*rays(bnc, i, 3)*grat_pos(3) &
+           !      - 2.0*(dir(i, 2)**2)*rays(bnc, i, 3)*grat_pos(3) &
+           !      - 4.0*rays(bnc, i, 1)*dir(i, 1)*dir(i, 3)*grat_pos(3) &
+           !      + 4.0*dir(i, 1)*grat_pos(1)*dir(i, 3)*grat_pos(3)&
+           !      - 4.0*rays(bnc, i, 2)*dir(i, 2)*dir(i, 3)*grat_pos(3) &
+           !      + 4.0*dir(i, 2)*grat_pos(2)*dir(i, 3)*grat_pos(3) &
+           !      - 6.0*rays(bnc, i, 3)*(dir(i, 3)**2)*grat_pos(3) &
+           !      + (dir(i, 1)**2)*grat_pos(3)**2 &
+           !      + (dir(i, 2)**2)*grat_pos(3)**2 &
+           !      + 3.0*(dir(i, 3)**2)*grat_pos(3)**2)
+
+           ! a(3) = 4.0*(dir(i, 1)**2 &
+           !      + dir(i, 2)**2 &
+           !      + dir(i, 3)**2)*(rays(bnc, i, 1)*dir(i, 1) &
+           !      -
+
+           a(3) = 4.0*(dir(i, 1)**2 &
+                + dir(i, 2)**2 &
+                + dir(i, 3)**2)*(rays(bnc, i, 1)*dir(i, 1) &
+                - dir(i, 1)*grat_pos(1) &
+                + rays(bnc, i, 2)*dir(i, 2) &
+                - dir(i, 2)*grat_pos(2) &
+                + rays(bnc, i, 3)*dir(i, 3) &
+                - dir(i, 3)*grat_pos(3))
+
+           a(4) = ( dir(i, 1)**2 &
+                + dir(i, 2)**2 &
+                + dir(i, 3)**2)**2
+
+           
+           
+           ! dd(0) = a(4)
+           ! dd(1) = a(3)
+           ! dd(2) = a(2)
+           ! dd(3) = a(1)
+           ! dd(4) = a(0)
+
+           call qtcrt(a, z)
+           !dd = a
+           !call quartic(dd, sol, soli, Nsol)
+           !print *, Nsol
+           !print *, sol
+           !print *, soli
+           !print *,
+
+           !print *, z
+           !stop
+           
+
+           ! print *, real(z(1))
+           ! print *, z
+           ! print *, imag(z(1))
+
+           ! print *, imag(z)
+           ! stop
+           if (bnc == 3) then
+              print *, z
+              print *, 
+           end if
+
+           !t_bsquare = ter_b**2 - 4.0*ter_a*ter_c
 
            det_a = dir(i, 1)**2 + dir(i, 3)**2
            det_b = (2.0*(rays(bnc, i, 1)*dir(i, 1) - det_pos(1)*dir(i, 1)) &
@@ -480,52 +741,120 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               end if
            end if
 
-           if (ter_a == 0.0) then
-              if (t_bsquare >= 0.0) then
-                 t_pos(:, t_calcd) = (/ -ter_c/ter_b, 3.0 /)
-                 t_arr = dir(i, :)*t_pos(1, t_calcd)
-
-                 if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
-                      .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
-                    t_calcd = t_calcd + 1
-                 else
-                    t_pos(:, t_calcd) = (/0.0, 0.0/)
-                    t_arr = 0.0
-                 end if
-              else
-                 print *, "ERROR"
+           !tertiary
+           if (abs(imag(z(1))) <= 0.001) then
+           !if (real(z(1)) > 0.1) then
+              if (bnc == 2) then
+                 !print *, "z1: ", z(1)
               end if
-           else if (t_bsquare == 0.0) then
-              t_pos(:, t_calcd) = (/ -ter_b/(2.0*ter_a), 3.0 /)
-              t_arr = dir(i, :) * t_pos(1, t_calcd)
-              if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
-                   .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
-                 t_calcd = t_calcd + 1
-              else
-                 t_pos(:, t_calcd) = (/0.0, 0.0/)
-                 t_arr = 0.0
-              end if
-           else if (t_bsquare >= 0.0) then
-              t_pos(:, t_calcd) = (/ (-ter_b + sqrt(t_bsquare))/(2.0*ter_a), 3.0 /)
+              t_pos(:, t_calcd) = (/real(z(1)), 3.0/)
               t_arr = dir(i, :)*t_pos(1, t_calcd)
-              if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
-                   .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
-                 t_calcd = t_calcd + 1
-              else
-                 t_pos(:, t_calcd) = (/0.0, 0.0/)
-                 t_arr = 0.0
-              end if
-              
-              t_pos(:, t_calcd) = (/ (-ter_b - sqrt(t_bsquare))/(2.0*ter_a), 3.0 /)
-              t_arr = dir(i, :)*t_pos(1, t_calcd)
-              if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
-                   .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+              ! if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+              !      .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+              if (rays(bnc, i, 3) + t_arr(3) <= -1.5) then
                  t_calcd = t_calcd + 1
               else
                  t_pos(:, t_calcd) = (/0.0, 0.0/)
                  t_arr = 0.0
               end if
            end if
+           
+           if (abs(imag(z(2))) <= 0.001) then
+           !if (imag(z(2)) == 0.0) then
+           !if (real(z(2)) >= 0.1) then
+              !print *, "z2: ", z(2)
+              t_pos(:, t_calcd) = (/real(z(2)), 3.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              ! if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+              !      .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+              if (rays(bnc, i, 3) + t_arr(3) <= -1.5) then
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+           end if
+           
+           if (abs(imag(z(3))) <= 0.001) then
+           !if (imag(z(3)) == 0.0) then
+           !if (real(z(3)) >= 0.1) then
+              !print *, "z3: ", z(3)
+              t_pos(:, t_calcd) = (/real(z(3)), 3.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              ! if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+              !      .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+              if (rays(bnc, i, 3) + t_arr(3) <= -1.5) then
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+           end if
+
+           if (abs(imag(z(4))) <= 0.001) then
+           !if (imag(z(4)) == 0.0) then
+           !if (real(z(4)) >= 0.1) then
+              !print *, "z4: ", z(4)
+              t_pos(:, t_calcd) = (/real(z(4)), 3.0/)
+              t_arr = dir(i, :)*t_pos(1, t_calcd)
+              ! if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+              !      .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+              if (rays(bnc, i, 3) + t_arr(3) <= -1.5) then
+                 t_calcd = t_calcd + 1
+              else
+                 t_pos(:, t_calcd) = (/0.0, 0.0/)
+                 t_arr = 0.0
+              end if
+           end if
+
+              
+
+           ! if (ter_a == 0.0) then
+           !    if (t_bsquare >= 0.0) then
+           !       t_pos(:, t_calcd) = (/ -ter_c/ter_b, 3.0 /)
+           !       t_arr = dir(i, :)*t_pos(1, t_calcd)
+
+           !       if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+           !            .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+           !          t_calcd = t_calcd + 1
+           !       else
+           !          t_pos(:, t_calcd) = (/0.0, 0.0/)
+           !          t_arr = 0.0
+           !       end if
+           !    else
+           !       print *, "ERROR"
+           !    end if
+           ! else if (t_bsquare == 0.0) then
+           !    t_pos(:, t_calcd) = (/ -ter_b/(2.0*ter_a), 3.0 /)
+           !    t_arr = dir(i, :) * t_pos(1, t_calcd)
+           !    if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+           !         .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+           !       t_calcd = t_calcd + 1
+           !    else
+           !       t_pos(:, t_calcd) = (/0.0, 0.0/)
+           !       t_arr = 0.0
+           !    end if
+           ! else if (t_bsquare >= 0.0) then
+           !    t_pos(:, t_calcd) = (/ (-ter_b + sqrt(t_bsquare))/(2.0*ter_a), 3.0 /)
+           !    t_arr = dir(i, :)*t_pos(1, t_calcd)
+           !    if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+           !         .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+           !       t_calcd = t_calcd + 1
+           !    else
+           !       t_pos(:, t_calcd) = (/0.0, 0.0/)
+           !       t_arr = 0.0
+           !    end if
+              
+           !    t_pos(:, t_calcd) = (/ (-ter_b - sqrt(t_bsquare))/(2.0*ter_a), 3.0 /)
+           !    t_arr = dir(i, :)*t_pos(1, t_calcd)
+           !    if ( sqrt((rays(bnc, i, 1) + t_arr(1))**2 + (rays(bnc, i, 2) + t_arr(2))**2) <= grat_rad &
+           !         .and. (rays(bnc, i, 3) + t_arr(3) <= -1.5)) then
+           !       t_calcd = t_calcd + 1
+           !    else
+           !       t_pos(:, t_calcd) = (/0.0, 0.0/)
+           !       t_arr = 0.0
+           !    end if
+           ! end if
               
            if (det_a == 0.0) then
               if (d_bsquare >= 0.0) then
@@ -614,11 +943,20 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               dir(i, :) = dir(i, :)/(sqrt(dot_product(dir(i, :), dir(i, :))))
 
            else if (t_pos(2, minloc(t_pos(1, :), 1, t_pos(1, :) > 0.01)) == 3.0) then
-              normal = (/ 2.0*(rays(bnc + 1, i, 1) - grat_pos(1)), &
+              normal = (/ 2.0*(rays(bnc + 1, i, 1) - grat_pos(1))*( 1.0 &
+                   - grat_r/sqrt((rays(bnc + 1, i, 1) - grat_pos(1))**2 &
+                   + (rays(bnc + 1, i, 3) - grat_pos(3))**2)), &
                    2.0*(rays(bnc + 1, i, 2) - grat_pos(2)), &
-                   2.0*(rays(bnc + 1, i, 3) - grat_pos(3)) /)
-              normal = normal/sqrt(dot_product(normal, normal))
+                   2.0*(rays(bnc + 1, i, 3) - grat_pos(3))*( 1.0 &
+                   - grat_r/sqrt((rays(bnc + 1, i, 1) - grat_pos(1))**2 &
+                   + (rays(bnc + 1, i, 3) - grat_pos(3))**2))/)
 
+              ! normal = (/ 2.0*(rays(bnc + 1, i, 1) - grat_pos(1)), &
+              !      2.0*(rays(bnc + 1, i, 2) - grat_pos(2)), &
+              !      2.0*(rays(bnc + 1, i, 3) - grat_pos(3)) /)
+              normal = normal/sqrt(dot_product(normal, normal))
+              
+              
               normal = -normal
 
               if (dir(i, 3) > 0.0) then
@@ -627,7 +965,7 @@ subroutine fire_lazors(rays, dir, mask_ct, lobound, hibound, numrays, &
               else
                  mask_ct(i) = bnc + 1
               end if
-
+              print *, "ARE WE GOING IN HERE?"
               !conceptual groove dir is (0, -1, 0) 
 
               !we calc a special normal for the groove direction,
@@ -841,7 +1179,7 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   call plcol0(15)
   !call plenv(zmin, zmax, ymin, ymax, just, axis)
-  call plenv(-2.4, 3.2, -0.6, 0.6, 0, axis)
+  call plenv(-2.2, 3.2, -0.6, 0.6, 0, axis)
   call pllab("Z Axis (Meters)", "Y Axis (Meters)", "View from X Axis")
   do i = 1, numrays
      if (abs(rays(1, i, 1)) <= 0.01) then
@@ -904,7 +1242,8 @@ subroutine plot_that_action(name, lobound, hibound, rays, numrays, mask_ct, wave
 
   call plcol0(15)
   !call plenv(zmin, zmax, xmin, xmax, just, axis)
-  call plenv(-2.4, 3.2, -1.6, 1.6, just, axis)
+  !call plenv(-2.4, 3.2, -1.6, 1.6, just, axis)
+  call plenv(-2.2, 3.2, -1.6, 1.6, just, axis)
   call pllab("Z Axis (Meters)", "X Axis (Meters)", "View from Y Axis")
 
   do i = 1, numrays
@@ -1051,25 +1390,25 @@ subroutine plot_spot(rays, wavel, numrays, mask_ct, name, beamrot)
         proj = -proj
         points(n, :) = (/proj, rays(maxval(mask_ct), i, 2)/)
         
-        if (wavel(i) <= 2000.0 .and. wavel(i) > 1800.0) then
-           color(n) = 1
-        else if (wavel(i) <= 1800.0 .and. wavel(i) > 1600.0) then
-           color(n) = 2
-        else if (wavel(i) <= 1600.0 .and. wavel(i) > 1400.0) then
-           color(n) = 3
-        else if (wavel(i) <= 1400.0 .and. wavel(i) >= 1200.0) then
-           color(n) = 9
-        else
-           !wat?
-        end if
-
-        ! if (wavel(i) < 2000.0) then
-        !    color(n) = 9
-        ! else if (wavel(i) == 2000.0) then
-        !    color(n) = 3
-        ! else if (wavel(i) > 2000.0) then
+        ! if (wavel(i) <= 2000.0 .and. wavel(i) > 1800.0) then
         !    color(n) = 1
+        ! else if (wavel(i) <= 1800.0 .and. wavel(i) > 1600.0) then
+        !    color(n) = 2
+        ! else if (wavel(i) <= 1600.0 .and. wavel(i) > 1400.0) then
+        !    color(n) = 3
+        ! else if (wavel(i) <= 1400.0 .and. wavel(i) >= 1200.0) then
+        !    color(n) = 9
+        ! else
+        !    !wat?
         ! end if
+
+        if (wavel(i) < 1200.0) then
+           color(n) = 9
+        else if (wavel(i) == 1200.0) then
+           color(n) = 3
+        else if (wavel(i) > 1200.0) then
+           color(n) = 1
+        end if
 
 
         n = n + 1
@@ -1421,3 +1760,4 @@ SUBROUTINE init_random_seed()
   DEALLOCATE(seed)
 END SUBROUTINE init_random_seed
 !kthxbai
+
